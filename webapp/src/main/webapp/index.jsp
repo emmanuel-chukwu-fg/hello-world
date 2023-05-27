@@ -3,6 +3,10 @@
     <h1>Finally Finishing this course</h1>
     <p>Please fill in this form to create an account.</p>
     <hr>
+    
+    <label for="Name"><b>Nick Name</b></label>
+    <input type="text" placeholder="Enter Full Name" name="nick" id="nick" required>
+    <br>
      
     <label for="Name"><b>Enter Name</b></label>
     <input type="text" placeholder="Enter Full Name" name="Name" id="Name" required>
