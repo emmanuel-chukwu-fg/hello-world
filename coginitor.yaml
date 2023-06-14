@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template for AWS Cognito User Pool
+
+Parameters:
+  UserPoolName:
+    Type: String
+    Description: Name for the AWS Cognito User Pool
+
+Resources:
+  # Create an SNS Topic for AWS Cognito User Pool
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: 'AWS Cognito User Pool SMS'  # Display name for the SNS topic
+      TopicName: !Sub '${UserPoolName}-SNS'  # The name of the SNS topic is derived from the UserPoolName parameter
+
+  # Define the policy for the SNS Topic
+  SNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - Ref: SNSTopic  # Reference the created SNS topic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cognito-idp.amazonaws.com
+            Action: sns:Publish  # Allow Cognito to publish messages to the SNS topic
+            Resource: !Ref SNSTopic  # Reference the SNS topic resource
+
+  # Create an IAM role for Cognito to assume
+  SNSRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "cognito-idp.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+
+      # Define the policy for the IAM role
+      Policies:
+        - PolicyName: "CognitoSNSPolicy"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action: "sns:publish"  # Allow the IAM role to publish messages to any SNS topic
+                Resource: "*"  # Allow access to all SNS topics
+
+  # Create the AWS Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Ref UserPoolName  # Use the provided UserPoolName parameter
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+          - Name: verified_phone_number
+            Priority: 2
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        InviteMessageTemplate:
+          EmailMessage: 'Hello {username}, Your temporary password is {####}. Please sign in using this temporary password and reset your password immediately.'
+          EmailSubject: 'Your temporary password for {PoolName}'
+          SMSMessage: 'Hello {username}, Your temporary password is {####}. Please sign in using this temporary password and reset your password immediately.'
+      AutoVerifiedAttributes:
+        - email
+      EmailVerificationMessage: 'Please click the link below to verify your email address: {####}'
+      EmailVerificationSubject: 'Verify your email address'
+      MfaConfiguration: OPTIONAL
+      SmsConfiguration:
+        ExternalId: !Ref UserPoolName
+        SnsCallerArn: !GetAtt SNSRole.Arn  # Reference the ARN of the IAM role for sending SMS messages
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: true
+        - AttributeDataType: String
+          Name: given_name
+          Required: false
+        - AttributeDataType: String
+          Name: family_name
+          Required: false
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool  # Output the User Pool ID
+    Description: User Pool ID of the AWS Cognito User Pool
+  SNSTopicArn:
+    Value: !Ref SNSTopic  # Output the ARN of the SNS topic
+    Description: ARN of the SNS Topic for SMS messages
+  SNSRoleArn:
+    Value: !GetAtt SNSRole.Arn  # Output the ARN of the IAM role for sending SMS messages
+    Description: ARN of the IAM role for sending SMS messages via Amazon SNS
