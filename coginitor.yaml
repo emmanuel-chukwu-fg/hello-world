@@ -1,36 +1,31 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template for AWS Cognito User Pool
 
-Parameters:
-  UserPoolName:
-    Type: String
-    Description: Name for the AWS Cognito User Pool
-
 Resources:
   # Create an SNS Topic for AWS Cognito User Pool
-  SNSTopic:
+  rSNSTopic:
     Type: AWS::SNS::Topic
     Properties:
-      DisplayName: 'AWS Cognito User Pool SMS'  # Display name for the SNS topic
-      TopicName: !Sub '${UserPoolName}-SNS'  # The name of the SNS topic is derived from the UserPoolName parameter
+      DisplayName: 'AWS Cognito User Pool SMS'
+      TopicName: MyUserPool-SNS
 
   # Define the policy for the SNS Topic
-  SNSTopicPolicy:
+  rSNSTopicPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
-        - Ref: SNSTopic  # Reference the created SNS topic
+        - Ref: rSNSTopic
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service: cognito-idp.amazonaws.com
-            Action: sns:Publish  # Allow Cognito to publish messages to the SNS topic
-            Resource: !Ref SNSTopic  # Reference the SNS topic resource
+            Action: sns:Publish
+            Resource: !Ref rSNSTopic
 
   # Create an IAM role for Cognito to assume
-  SNSRole:
+  rSNSRole:
     Type: "AWS::IAM::Role"
     Properties:
       AssumeRolePolicyDocument: 
@@ -42,22 +37,20 @@ Resources:
                 - "cognito-idp.amazonaws.com"
             Action: 
               - "sts:AssumeRole"
-
-      # Define the policy for the IAM role
       Policies:
         - PolicyName: "CognitoSNSPolicy"
           PolicyDocument: 
             Version: "2012-10-17"
             Statement: 
               - Effect: "Allow"
-                Action: "sns:publish"  # Allow the IAM role to publish messages to any SNS topic
-                Resource: "*"  # Allow access to all SNS topics
+                Action: "sns:publish"
+                Resource: "*"
 
   # Create the AWS Cognito User Pool
-  UserPool:
+  rUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Ref UserPoolName  # Use the provided UserPoolName parameter
+      UserPoolName: !Sub "MyUserPool-${AWS::Region}"
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
@@ -76,8 +69,8 @@ Resources:
       EmailVerificationSubject: 'Verify your email address'
       MfaConfiguration: OPTIONAL
       SmsConfiguration:
-        ExternalId: !Ref UserPoolName
-        SnsCallerArn: !GetAtt SNSRole.Arn  # Reference the ARN of the IAM role for sending SMS messages
+        ExternalId: MyUserPool
+        SnsCallerArn: !GetAtt rSNSRole.Arn
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -96,13 +89,37 @@ Resources:
           Name: family_name
           Required: false
 
+  # Create AWS Cognito User Pool Client
+  rUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "MyUserPoolClient-${AWS::Region}"
+      AllowedOAuthFlowsUserPoolClient: true
+      GenerateSecret: false
+      UserPoolId: !Ref rUserPool  # Reference the User Pool ID
+      CallbackURLs:
+        - http://localhost:3000
+      ExplicitAuthFlows:
+        - ADMIN_NO_SRP_AUTH
+        - USER_PASSWORD_AUTH
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - phone
+        - email
+        - openid
+        - profile
+      SupportedIdentityProviders:
+        - COGNITO
+
 Outputs:
-  UserPoolId:
-    Value: !Ref UserPool  # Output the User Pool ID
+  rUserPoolId:
+    Value: !Ref rUserPool
     Description: User Pool ID of the AWS Cognito User Pool
-  SNSTopicArn:
-    Value: !Ref SNSTopic  # Output the ARN of the SNS topic
+  rSNSTopicArn:
+    Value: !Ref rSNSTopic
     Description: ARN of the SNS Topic for SMS messages
-  SNSRoleArn:
-    Value: !GetAtt SNSRole.Arn  # Output the ARN of the IAM role for sending SMS messages
+  rSNSRoleArn:
+    Value: !GetAtt rSNSRole.Arn
     Description: ARN of the IAM role for sending SMS messages via Amazon SNS
