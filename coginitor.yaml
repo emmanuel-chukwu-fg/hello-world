@@ -9,21 +9,6 @@ Resources:
       DisplayName: 'AWS Cognito User Pool SMS'
       TopicName: MyUserPool-SNS
 
-  # Define the policy for the SNS Topic
-  rSNSTopicPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Properties:
-      Topics:
-        - Ref: rSNSTopic
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: cognito-idp.amazonaws.com
-            Action: sns:Publish
-            Resource: !Ref rSNSTopic
-
   # Create an IAM role for Cognito to assume
   rSNSRole:
     Type: "AWS::IAM::Role"
