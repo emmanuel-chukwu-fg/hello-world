@@ -1,0 +1,152 @@
+#!/bin/bash
+
+# Install vsftpd
+sudo yum install -y vsftpd
+
+# Configure vsftpd
+sudo sed -i 's/anonymous_enable=YES/anonymous_enable=NO/' /etc/vsftpd/vsftpd.conf
+sudo sed -i '/^#chroot_local_user=/a chroot_local_user=NO' /etc/vsftpd/vsftpd.conf
+sudo sed -i '$a pasv_enable=YES' /etc/vsftpd/vsftpd.conf
+sudo sed -i '$a pasv_min_port=1024' /etc/vsftpd/vsftpd.conf
+sudo sed -i '$a pasv_max_port=1048' /etc/vsftpd/vsftpd.conf
+
+# Retrieve public IP address
+public_ip=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+
+# Update pasv_address in vsftpd.conf
+sudo sed -i "\$a pasv_address=$public_ip" /etc/vsftpd/vsftpd.conf
+
+# Restart vsftpd service
+sudo systemctl restart vsftpd
+
+# Create a new FTP user
+sudo adduser gunjan-ftp
+
+# Set a password for the FTP user
+echo "gunjan-ftp:newpassword" | sudo chpasswd
+
+# Allow the FTP user to access the necessary directories
+sudo usermod -aG wheel gunjan-ftp
+sudo chown gunjan-ftp:gunjan-ftp /var/www/html
+
+# Restart vsftpd service again to apply the changes
+sudo systemctl restart vsftpd
+
+
+
+
+- name: Install and configure vsftpd
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Install vsftpd package
+      yum:
+        name: vsftpd
+        state: present
+
+    - name: Configure vsftpd
+      blockinfile:
+        path: /etc/vsftpd/vsftpd.conf
+        block: |
+          anonymous_enable=NO
+          chroot_local_user=NO
+          pasv_enable=YES
+          pasv_min_port=1024
+          pasv_max_port=1048
+          pasv_address={{ ansible_default_ipv4.address }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+
+    # - name: Configure vsftpd
+    #   blockinfile:
+    #     path: /etc/vsftpd/vsftpd.conf
+    #     block: |
+    #       anonymous_enable=NO
+    #       chroot_local_user=NO
+    #       pasv_enable=YES
+    #       pasv_min_port=1024
+    #       pasv_max_port=1048
+    #       pasv_address={{ ansible_default_ipv4.address }}
+    #     marker: "# {mark} ANSIBLE MANAGED BLOCK"
+
+    - name: Restart vsftpd service
+      service:
+        name: vsftpd
+        state: restarted
+
+
+    - name: Add a new user
+      user:
+        name: seaproject
+        password: "{{ 'reply2022' | password_hash('sha512', 'mysecretsalt', 10000) }}"
+
+    - name: Allow FTP user access to directories
+      file:
+        path: /var/www/html
+        owner: seaproject
+        group: seaproject
+        state: directory
+        recurse: yes
+
+    - name: Restart vsftpd service again
+      service:
+        name: vsftpd
+        state: restarted
+
+
+##############################################################################################
+
+- name: Install and configure vsftpd
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Install vsftpd package
+      yum:
+        name: vsftpd
+        state: present
+
+    - name: Edit vsftpd configuration
+      lineinfile:
+        path: /etc/vsftpd/vsftpd.conf
+        regexp: "^(anonymous_enable=)"
+        line: "anonymous_enable=NO"
+
+    - name: Edit vsftpd configuration
+      lineinfile:
+        path: /etc/vsftpd/vsftpd.conf
+        regexp: '^#?(chroot_local_user=).*'
+        line: '\1NO'
+        backrefs: yes
+
+    - name: Configure vsftpd
+      blockinfile:
+        path: /etc/vsftpd/vsftpd.conf
+        block: |
+          pasv_enable=YES
+          pasv_min_port=1024
+          pasv_max_port=1048
+          pasv_address={{ ansible_default_ipv4.address }}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+
+    - name: Restart vsftpd service
+      service:
+        name: vsftpd
+        state: restarted
+
+
+    - name: Add a new user
+      user:
+        name: seaproject
+        password: "{{ 'reply2022' | password_hash('sha512', 'mysecretsalt', 10000) }}"
+
+    - name: Allow FTP user access to directories
+      file:
+        path: /var/www/html
+        owner: seaproject
+        group: seaproject
+        state: directory
+        recurse: yes
+
+    - name: Restart vsftpd service again
+      service:
+        name: vsftpd
+        state: restarted
