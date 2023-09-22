@@ -1,0 +1,53 @@
+In summary, the article discusses a blue-green deployment strategy for upgrading Kubernetes clusters on Amazon Elastic Kubernetes Service (Amazon EKS). Here are the key action plans simplified into steps:
+
+**1. Evaluate Changes and Compatibility:**
+   - Read the Istio and Kubernetes changelogs to understand changes in the latest versions.
+   - Use tools like Kube-No-Trouble and istioctl to check compatibility with your existing cluster.
+
+**2. Plan for Cluster Creation:**
+   - Create a new cluster with the target version.
+   - Update Terraform code to replicate the existing cluster with new resource names.
+   - Ensure a proper naming convention for Terraform code.
+
+**3. Deploy Istio and Applications:**
+   - Bootstrap the new cluster.
+   - Deploy Istio and validate its installation.
+   - Update deployment process to deploy applications on both old and new clusters.
+
+**4. Manage Traffic Switch:**
+   - Use Amazon Application Load Balancer (ALB) and Target Groups.
+   - Gradually shift traffic to the new cluster.
+   - Monitor and validate application behavior during the traffic switch.
+
+**5. Handle Stateful Sets:**
+   - For applications with stateful sets, consider the backend storage (e.g., Amazon EBS).
+   - Plan and execute a migration strategy for stateful applications.
+
+**6. Finalize Upgrade:**
+   - Stop indexing or making changes to the old cluster.
+   - Disable shard allocation for Elasticsearch or similar data stores.
+   - Scale down old cluster instances.
+   - Deploy Helm releases in the new cluster.
+   - Enable shard allocation to complete the upgrade.
+
+**7. Validate Cluster Health:**
+   - Check the status of the new cluster and applications.
+   - Ensure the cluster is healthy and operational.
+
+**8. Monitor and Troubleshoot:**
+   - Monitor application logs and performance.
+   - Use tools like kubectl and New Relic for investigation during the migration.
+
+**9. Repeat for Each Cluster:**
+   - Apply the blue-green deployment strategy to each cluster that needs upgrading.
+   - Document the process to facilitate future upgrades.
+
+For complex questions to ask your advanced AWS client, consider the following:
+
+1. "Given our current AWS Transit Gateway setup, how can we optimize network traffic routing during the blue-green deployment process?"
+2. "Can you provide insights into any custom resource definitions (CRDs) or Kubernetes add-ons that might introduce complexities during the upgrade?"
+3. "What strategies have you employed for managing data consistency and integrity, especially for stateful applications, when transitioning to the new cluster?"
+4. "In your experience, what challenges have you encountered with application dependencies and third-party integrations when adopting the blue-green deployment approach?"
+5. "Could you elaborate on any strategies or tools you've used to ensure minimal application downtime and user impact during the transition between clusters?"
+
+These questions should help you engage in a meaningful discussion with your client about the article's content and their specific AWS environment.
