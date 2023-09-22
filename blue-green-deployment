@@ -1,3 +1,75 @@
+Upgrade Process Overview:
+
+Understand the context and the need for Kubernetes cluster upgrades.
+Consider the challenges of compatibility and breaking changes.
+Upgrade Paths:
+
+Evaluate two upgrade solutions: standard upgrades and blue-green deployments.
+Blue-Green Deployment Strategy:
+
+Create a brand new cluster with the target Kubernetes and Istio versions.
+Standard Upgrades (Non-breaking Changes):
+
+Upgrade the control plane for Amazon EKS.
+Trigger an instance refresh on nodes.
+Perform rolling updates on nodes.
+Handle statefulsets manually if required.
+Blue-Green Deployment (Breaking Changes):
+
+Create a new cluster with the latest versions.
+Deploy applications on the new cluster.
+Test applications thoroughly on the new cluster.
+Gradually switch traffic to the new cluster.
+Finalize the upgrade by shutting down the old cluster.
+Naming Convention:
+
+Use a naming convention (e.g., spoon and knife) to differentiate clusters.
+Identify the cluster responsible for production traffic.
+Workflow Overview:
+
+Understand that blue-green deployments take more time than standard upgrades (1-2 months vs. 2-4 weeks).
+Environment Isolation:
+
+Ensure that all environments are isolated, except for specific clusters with connectivity.
+AWS Resources Management:
+
+Maintain control over AWS resources using Terraform, not Kubernetes.
+Architecture Overview:
+
+Use a consistent architecture across all environments in the Paris (eu-west-3) Region.
+Employ an internet-facing Application Load Balancer (ALB) for traffic routing.
+Utilize various AWS services such as RDS, Amazon EFS, Amazon S3, and Amazon ElastiCache.
+Prerequisites:
+
+Read Kubernetes and Istio changelogs.
+Check compatibility of existing objects with new versions.
+Use tools like Kube-No-Trouble and istioctl for compatibility checks.
+Upgrade applications as needed, typically by updating Helm charts.
+Validation and Testing:
+
+Set up an isolated environment (integration) to validate the upgrade process.
+Create the new cluster within the same Virtual Private Cloud (VPC).
+Bootstrap the new cluster.
+Deploy Istio and validate its installation.
+Update deployment processes to target both old and new clusters.
+Gradually switch traffic to the new cluster for testing.
+Dealing with Statefulsets:
+
+Develop specific migration plans for statefulsets with backend storage.
+For example, for Elasticsearch:
+Stop logstash instances.
+Disable shard allocation.
+Scale down instances in the old cluster.
+Deploy Helm release in the new cluster.
+Manage shard allocation activation.
+Conclusion:
+
+Emphasize the need for preparation, time, and patience for successful upgrades.
+Recognize the higher initial cost of blue-green deployments but their long-term benefits.
+Highlight the importance of documentation and planning for future upgrades.
+These steps provide an overview of the blue-green deployment strategy for Kubernetes cluster upgrades as described in the article.
+
+
 This article discusses how TheFork, an online restaurant booking and discovery platform, manages Kubernetes cluster upgrades using the blue-green deployment strategy. Here's a summary of the key points in the article:
 
 Kubernetes is a rapidly evolving platform, and keeping clusters up-to-date is essential. However, upgrading can be challenging due to compatibility issues and breaking changes.
@@ -38,8 +110,152 @@ Dealing with Statefulsets:
 Statefulsets with backend storage (e.g., Amazon EBS) require a different migration approach.
 Specific migration plans are developed for each statefulset, such as Elasticsearch.
 Shard allocation is managed to ensure a smooth transition.
-Conclusion:
 
-The blue-green deployment strategy requires preparation, time, and patience but allows for efficient upgrades with minimal downtime.
-While it incurs a higher initial cost compared to simple Kubernetes upgrades, it pays off in terms of reduced risk and improved confidence in future upgrades.
-The article emphasizes the importance of documentation and planning in successful cluster upgrades.
+
+
+
+Questions:
+
+Transit Gateway Integration:
+
+"How has your Transit Gateway been configured to facilitate blue-green deployments, and what considerations have you made for seamless application traffic transition between environments?"
+Network Segmentation with Transit Gateway:
+
+"Could you explain your approach to network segmentation using Transit Gateway, and how do you plan to ensure isolation between the blue and green environments during deployment transitions?"
+
+Certainly, if your client is an advanced AWS user, you can ask more technically challenging questions to ensure a deeper understanding of their requirements and capabilities. Here are some advanced technical questions:
+
+**Step 1: Prepare the New Cluster (Green Cluster)**
+
+1. **AWS EKS Cluster Configuration:**
+   - What specific configurations or customizations do you plan to apply to the AWS EKS cluster, such as worker node instance types, networking, or add-ons like Calico for network policies?
+
+2. **High Availability and Scaling:**
+   - How will you configure high availability for the AWS EKS control plane, and what strategies do you have for scaling worker nodes in response to changing traffic patterns?
+
+**Step 2: Migrate Workloads**
+
+3. **AWS EKS Networking:**
+   - Can you describe your network architecture within AWS EKS, including considerations for VPC peering, VPN, or Direct Connect if applicable?
+
+4. **Application Portability:**
+   - Are your application containers designed to be portable across different Kubernetes clusters, or are there AWS-specific dependencies in your deployments?
+
+**Step 3: Data Migration (if applicable)**
+
+5. **AWS Database Migration:**
+   - If you're migrating databases to AWS services, can you provide details on the database engines used and your migration approach, including any schema transformations?
+
+6. **Data Consistency and Replication:**
+   - How do you plan to ensure data consistency during the migration process, especially for applications that rely on database transactions?
+
+**Step 4: Test**
+
+7. **Performance Testing:**
+   - Could you share your approach to performance testing on AWS EKS, including tools and metrics used to evaluate application and cluster performance?
+
+**Step 5: Adjust DNS or Load Balancers**
+
+8. **Traffic Routing Strategies:**
+   - Are you considering advanced traffic routing strategies, such as weighted routing, latency-based routing, or traffic shifting using AWS Route 53?
+
+9. **Load Balancer Configuration:**
+   - How do you plan to configure AWS Elastic Load Balancers to distribute traffic effectively to the new AWS EKS cluster?
+
+**Step 6: Monitor and Verify**
+
+10. **Advanced Monitoring:**
+    - Can you provide insights into advanced monitoring and alerting strategies for AWS EKS, including custom CloudWatch metrics or integration with third-party monitoring tools?
+
+11. **Security and Compliance:**
+    - What measures are you taking to ensure that AWS EKS and your applications comply with security best practices, including IAM role and policy design and network segmentation?
+
+**Step 7: Cleanup**
+
+12. **Resource Cleanup Automation:**
+    - Are you planning to automate resource cleanup in the old cluster, and if so, what AWS services or tools will you use for automation (e.g., AWS Lambda, AWS CloudFormation)?
+
+**Step 8: Document the Process**
+
+13. **Infrastructure as Code (IaC):**
+    - Do you use Infrastructure as Code (IaC) tools like AWS CloudFormation or AWS CDK to manage your AWS resources and EKS cluster configuration?
+
+**Step 9: Monitor and Optimize**
+
+14. **Cost Optimization:**
+    - What specific cost optimization strategies are you implementing in your AWS EKS environment, such as Reserved Instances, AWS Spot Instances, or AWS Cost Explorer?
+
+15. **Scaling and Autoscaling Policies:**
+    - Can you elaborate on the AWS Auto Scaling policies you've defined for your EKS worker nodes and applications to handle varying workloads efficiently?
+
+These advanced technical questions should help you gain deeper insights into your client's AWS EKS deployment, infrastructure, and technical requirements, allowing you to provide tailored guidance and support for their blue-green deployment.
+
+Certainly! When discussing a blue-green deployment strategy for stateful sets with your client, here are some simple yet important questions to help you understand their specific needs and requirements:
+
+1. **Application Identification**:
+   - Can you provide a list of stateful applications within your Kubernetes cluster that you consider critical for your operations?
+
+2. **Data Volume and Size**:
+   - Do you have an estimate of the data volume and storage size associated with these stateful applications (e.g., Elasticsearch indices, databases)?
+   
+3. **Downtime Tolerance**:
+   - How much downtime can your organization tolerate for these stateful applications during the transition from the old to the new cluster?
+
+4. **Backup and Data Migration**:
+   - What strategies do you have in place for backing up and migrating the data associated with these stateful applications from the old cluster to the new one?
+
+5. **Post-Migration Testing**:
+   - What methods will you use to verify that the stateful applications in the new cluster are functioning correctly after the migration?
+
+These questions will help you establish a baseline understanding of the client's stateful set requirements and their expectations for the blue-green deployment strategy. They provide a starting point for a more detailed discussion and planning process.
+
+
+1. **Application Dependencies**:
+   - What are the critical stateful applications in your cluster that rely on Amazon EBS backend storage?
+   - Are there any specific dependencies between these applications that need to be considered during the migration?
+
+2. **Data Volume**:
+   - Can you provide an estimate of the data volume and size associated with the stateful applications (e.g., Elasticsearch indices, storage requirements)?
+   - Are there any limitations or constraints related to the size and performance of Amazon EBS volumes?
+
+3. **Downtime Tolerance**:
+   - What is the acceptable level of downtime for these stateful applications during the migration process?
+   - Are there specific hours or time frames when downtime is less impactful?
+
+4. **Data Consistency**:
+   - How critical is data consistency during the migration? Are there any specific data integrity requirements?
+   - Do you have a strategy for ensuring data consistency between the old and new clusters?
+
+5. **Migration Tools**:
+   - Are there any existing tools or methodologies you prefer to use for migrating data from the old cluster to the new one?
+   - Are you open to considering third-party tools or solutions for data migration and synchronization?
+
+6. **Backup and Rollback**:
+   - What is your backup strategy for the stateful applications' data before initiating the migration?
+   - Have you considered a rollback plan in case any issues arise during the migration process?
+
+7. **Shard Allocation Strategy**:
+   - Can you explain your shard allocation strategy for Elasticsearch, especially regarding primary and replica shards?
+   - Are there specific Elasticsearch settings or configurations that need to be maintained during and after the migration?
+
+8. **Scaling and Performance**:
+   - How will you handle the scaling of Elasticsearch nodes and clusters in the new environment to accommodate the data and workload?
+   - What performance monitoring and optimization measures are in place for Elasticsearch?
+
+9. **Testing and Validation**:
+   - What methods will you use to validate the integrity of data and application functionality in the new cluster before switching traffic?
+   - Do you have a testing environment that mirrors the production setup for validation?
+
+10. **Documentation and Knowledge Transfer**:
+    - Are there plans for documenting the entire migration process, including configurations, settings, and any custom scripts used?
+    - How do you intend to share knowledge and experiences gained from this complex statefulset migration with your team for future reference?
+
+11. **Post-Migration Monitoring**:
+    - What post-migration monitoring and performance checks will be in place to ensure the new cluster is operating as expected?
+    - Do you have alerting mechanisms for detecting any anomalies or issues in the new environment?
+
+12. **Long-Term Management**:
+    - After the migration, how will you manage and maintain the stateful applications in the new cluster for future upgrades or updates?
+    - Are there considerations for ongoing data synchronization between the old and new clusters?
+
+These questions will help you gain a deeper understanding of your client's requirements and constraints for a complex statefulset migration, allowing you to develop a comprehensive plan that ensures a smooth transition with minimal data loss and operational disruption.
