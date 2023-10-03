@@ -1,0 +1,9 @@
+module "log_shipping_metric" {
+  source                  = "../modules/gcp_log_metric"
+  metric_name             = "log_shipping_errors"
+  metric_description      = "Number of times the cluster has failed to flush its logs to GCP"
+  log_filter              = ["resource.type=k8s_container", "resource.labels.namespace_name=kube-system", "resource.labels.container_name=stackdriver-log-forwarder", "jsonPayload.log:\"failed to flush chunk\""]
+  label_name              = "Cluster"
+  label_description       = "Which cluster the error occurred on"
+  label_search_field_name = "EXTRACT(resource.labels.cluster_name)"
+}
