@@ -1,0 +1,112 @@
+https://cloud.google.com/anthos/clusters/docs/on-prem/latest/how-to/managing-node-pools
+https://cloud.google.com/anthos/clusters/docs/on-prem/latest/how-to/resizing-a-user-cluster#command-line
+
+# Resizing Anthos User Clusters: Adding or Removing Nodes
+
+Resizing an Anthos user cluster involves adjusting the number of nodes, either by adding or removing them. Adding nodes requires careful consideration of IP address availability for the new nodes. Anthos streamlines the resizing process by allowing users to modify the number of replicas in the node pool configuration.
+
+## Verification of IP Address Availability
+
+Before initiating a resize operation, it is crucial to ensure that an adequate number of IP addresses is available for the intended cluster size. The verification process differs based on whether the user cluster employs a DHCP server or static IP addresses.
+
+### DHCP
+
+- **Verification:**
+  If DHCP is used, confirm that the DHCP server can supply enough IP addresses. It should be capable of providing at least one more IP address than the anticipated number of nodes after resizing.
+
+### Static IPs
+
+- **Addition of Static IPs:**
+  If the user cluster is managed by the GKE On-Prem API, additional static IP addresses can be added through the Google Cloud Console or the command line on the admin workstation.
+
+#### Console:
+
+1. Open the user cluster's IP block file for editing.
+
+2. Verify that all intended IP addresses are included in the IP block file. Ensure there is at least one more IP address than the post-resizing node count.
+
+3. View reserved addresses for a user cluster:
+
+   ```bash
+   kubectl get cluster --kubeconfig ADMIN_CLUSTER_KUBECONFIG --namespace USER_CLUSTER_NAME USER_CLUSTER_NAME --output yaml
+   ```
+
+4. Add extra static IP addresses to the block as needed.
+
+#### Command Line:
+
+1. Open the user cluster's IP block file for editing.
+
+2. Verify and add static IP addresses as required.
+
+3. Run the following command to apply changes:
+
+   ```bash
+   gkectl update cluster
+   ```
+
+Example IP block file:
+
+```yaml
+hostconfig:
+  dns: 172.16.255.1
+  tod: 216.239.35.0
+blocks:
+- netmask: 255.255.248.0
+  gateway: 21.0.135.254
+  ips:
+  - ip: 21.0.133.41
+    hostname: user-node-1
+  - ip: 21.0.133.50
+    hostname: user-node-2
+  - ip: 21.0.133.56
+    hostname: user-node-3
+  - ip: 21.0.133.47
+    hostname: user-node-4
+```
+
+## Resizing the Cluster
+
+After verifying IP address availability, proceed with resizing the cluster.
+
+### Console:
+
+1. In the user cluster configuration file, update the value of the `replicas` field in the relevant `nodePools` elements.
+
+2. Resize the cluster:
+
+   ```bash
+   gkectl update cluster --kubeconfig ADMIN_CLUSTER_KUBECONFIG --config USER_CLUSTER_CONFIG
+   ```
+
+3. Verify the resizing:
+
+   ```bash
+   kubectl --kubeconfig USER_CLUSTER_KUBECONFIG get nodes
+   ```
+
+   ```bash
+   kubectl --kubeconfig USER_CLUSTER_KUBECONFIG describe machinedeployments NODE_POOL_NAME | grep Replicas
+   ```
+
+### Command Line:
+
+1. In the user cluster configuration file, update the value of the `replicas` field in the relevant `nodePools` elements.
+
+2. Resize the cluster:
+
+   ```bash
+   gkectl update cluster --kubeconfig ADMIN_CLUSTER_KUBECONFIG --config USER_CLUSTER_CONFIG
+   ```
+
+3. Verify the resizing:
+
+   ```bash
+   kubectl --kubeconfig USER_CLUSTER_KUBECONFIG get nodes
+   ```
+
+   ```bash
+   kubectl --kubeconfig USER_CLUSTER_KUBECONFIG describe machinedeployments NODE_POOL_NAME | grep Replicas
+   ```
+
+Ensure to replace placeholders like `ADMIN_CLUSTER_KUBECONFIG`, `USER_CLUSTER_CONFIG`, and `NODE_POOL_NAME` with your specific information. This process allows Anthos users to efficiently adjust the size of their user clusters to meet evolving resource requirements.
