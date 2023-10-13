@@ -1,8 +1,0 @@
-filter = "resource.type=\"k8s_pod\" AND severity=\"ERROR\" AND jsonPayload.labels.\"k8s-pod/namespace_name\" AND jsonPayload.labels.\"k8s-pod/container_name\" AND jsonPayload.labels.\"k8s-pod/container_restart_count\" > 0"
-filter = "resource.type=\"k8s_pod\" AND severity=\"ERROR\" AND jsonPayload.labels.\"k8s-pod/namespace_name\" AND jsonPayload.message:\"Connection refused\""
-filter = "resource.type=\"k8s_pod\" AND severity=\"ERROR\" AND jsonPayload.labels.\"k8s-pod/namespace_name\" AND jsonPayload.labels.\"k8s-pod/pod_phase\"=\"Failed\""
-filter = "resource.type=\"k8s_pod\" AND severity=\"ERROR\" AND jsonPayload.message:\"Error\" AND jsonPayload.labels.\"k8s-pod/namespace_name\""
-
-filter = "resource.type=\"k8s_pod\" AND severity=\"ERROR\" AND jsonPayload.status.phase:\"Failed\""
-
-
