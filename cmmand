@@ -2,3 +2,8 @@ kubectl get pods --output=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}
 kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name --no-headers=true | \
   xargs -I {} bash -c 'echo -n "{}," && kubectl exec {} -- dotnet --version --namespace={} 2>/dev/null' | \
   awk '{print $1,$NF}' OFS=',' > dotnet_versions.csv
+
+
+kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace},{@.metadata.name}{'\n'}{end}" | awk -F, '{system("echo -n "$1","$2","; kubectl exec -n "$1" "$2" -- dotnet --version 2>/dev/null")}' | tee pods_dotnet_versions.csv
+kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace},{@.metadata.name}{'\n'}{end}" | awk -F, '{system("echo -n "$1","$2","; kubectl exec -n "$1" "$2" -- dotnet --version 2>/dev/null")}' | tee pods_dotnet_versions.csv
+kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace} {@.metadata.name}{'\n'}{end}" | xargs -n2 sh -c 'dotnet_version=$(kubectl exec -n $0 $1 -- sh -c "command -v dotnet && dotnet --version" 2>/dev/null); if [ -n "$dotnet_version" ]; then echo "$0,$1,$dotnet_version"; fi' | tee pods_dotnet_versions.csv
