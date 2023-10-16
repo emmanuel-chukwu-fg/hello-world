@@ -1,0 +1,1 @@
+kubectl get pods --output=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | xargs -I {} kubectl exec {} -- dotnet --info
