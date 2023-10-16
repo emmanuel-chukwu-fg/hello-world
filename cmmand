@@ -1,1 +1,4 @@
 kubectl get pods --output=jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | xargs -I {} kubectl exec {} -- dotnet --info
+kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name --no-headers=true | \
+  xargs -I {} bash -c 'echo -n "{}," && kubectl exec {} -- dotnet --version --namespace={} 2>/dev/null' | \
+  awk '{print $1,$NF}' OFS=',' > dotnet_versions.csv
