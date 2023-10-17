@@ -75,7 +75,7 @@ def check_endpoints(urls):
 
         http_status = out.decode().strip()
         if http_status == "200":
-            print(f"{url}: '{http_status}' - SSL Working Fine")
+            print(f"{url}: '{http_status}' - 200 Returned SSL Working Fine")
         elif http_status == "404":
             print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
         else:
