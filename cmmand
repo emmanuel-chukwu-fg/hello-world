@@ -22,18 +22,14 @@ def switch_context(cluster_info):
     """
     Switches the kubectl context to the specified context.
     """
-    # Extract the context from the cluster information dictionary.
     context = cluster_info['context']
-    # Command to switch kubectl context to the specified context.
     cmd = ['kubectl', 'config', 'use-context', context]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
-    # If there's an error switching the context, log it and return False.
     if proc.returncode != 0:
         return False
 
-    # Context switch successful.
     return True
 
 def get_ingresses():
@@ -80,8 +76,10 @@ def check_endpoints(urls):
         http_status = out.decode().strip()
         if http_status == "200":
             print(f"{url}: '{http_status}' - SSL Working Fine")
+        elif http_status == "404":
+            print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
         else:
-            print(f"{url}: '{http_status}' - Error {http_status} returned")
+            print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
 
 def main():
     """
@@ -95,4 +93,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
