@@ -163,16 +163,17 @@ def check_endpoints(urls):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         out, err = proc.communicate()
 
-        # Decode the output and strip whitespace
-        http_status = out.decode().strip()
+        # Decode the output, strip whitespace and remove quotes
+        http_status = out.decode().strip().strip("'")  # Remove quotes around the status code
 
         # Ensure the status code is interpreted as an integer for comparison
         try:
             http_status_code = int(http_status)
-        except ValueError:
+        except ValueError:  # This will catch cases where http_status is not a number
             print(f"Unexpected output for {url}: {http_status}")
             continue
 
+        # Check the HTTP status code and print the appropriate message
         if http_status_code == 200:
             print(f"{url}: '{http_status_code}' - SSL Working Fine")
         elif http_status_code == 404:
@@ -192,6 +193,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-Unexpected output for https://test-wh-reform-api.anthos.sportski.com/health: '200'
-Unexpected output for https://test-wh-self-service.anthos.sportski.com/health: '200'
-Unexpected output for https://test-wh-self-service-api.anthos.sportski.com/health: '404'
