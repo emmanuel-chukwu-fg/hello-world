@@ -7,3 +7,101 @@ kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespac
 kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace},{@.metadata.name}{'\n'}{end}" | awk -F, '{system("echo -n "$1","$2","; kubectl exec -n "$1" "$2" -- dotnet --version 2>/dev/null")}' | tee pods_dotnet_versions.csv
 kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace},{@.metadata.name}{'\n'}{end}" | awk -F, '{system("echo -n "$1","$2","; kubectl exec -n "$1" "$2" -- dotnet --version 2>/dev/null")}' | tee pods_dotnet_versions.csv
 kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace} {@.metadata.name}{'\n'}{end}" | xargs -n2 sh -c 'dotnet_version=$(kubectl exec -n $0 $1 -- sh -c "command -v dotnet && dotnet --version" 2>/dev/null); if [ -n "$dotnet_version" ]; then echo "$0,$1,$dotnet_version"; fi' | tee pods_dotnet_versions.csv
+
+import subprocess
+import json
+
+# List of clusters to iterate over.
+CLUSTERS = [
+    "non-prod-buying",
+    "non-prod-ecommerce-internal",
+    "non-prod-retail",
+    "non-prod-tecth-enablement",
+    "non-prod-warehouse"
+]
+
+def switch_context(cluster):
+    # Command to switch kubectl context to the specified cluster.
+    cmd = ['kubectl', 'config', 'use-context', cluster]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    # If there's an error switching the context, log it and return False.
+    if proc.returncode != 0:
+        print(f"Error switching to context {cluster}: {err}")
+        return False
+
+    # Context switch successful.
+    print(f"Switched to context {cluster}")
+    return True
+
+def get_ingresses():
+    # Command to get all ingress resources across all namespaces in the current context.
+    cmd = ['kubectl', 'get', 'ingresses', '--all-namespaces', '-o', 'json']
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    # If there's an error fetching the ingresses, log it and return an empty list.
+    if proc.returncode != 0:
+        print(f"Error getting ingresses: {err}")
+        return []
+
+    # Parse the JSON output into a Python dictionary and return it.
+    ingresses = json.loads(out)
+    return ingresses['items']
+
+def build_urls(ingresses):
+    urls = []
+    # Iterate over each ingress resource.
+    for ingress in ingresses:
+        # Extract the rules and TLS configuration from the ingress spec.
+        rules = ingress['spec'].get('rules', [])
+        tls = ingress['spec'].get('tls', [])
+
+        # For each rule in the ingress resource...
+        for rule in rules:
+            host = rule.get('host', '')
+            https_scheme = 'http'  # Default to HTTP.
+            # Check if the current host is covered by a TLS configuration.
+            for t in tls:
+                if host in t.get('hosts', []):
+                    https_scheme = 'https'  # If TLS is configured, use HTTPS.
+                    break
+
+            # Construct the URL and add it to the list.
+            url = f"{https_scheme}://{host}"
+            urls.append(url)
+
+    return urls
+
+def check_ssl(urls):
+    # Iterate over each constructed URL.
+    for url in urls:
+        # Command to check SSL certificate validity. It connects to the SSL endpoint and retrieves the certificate's validity period.
+        cmd = f"echo | openssl s_client -connect {url} 2>/dev/null | openssl x509 -noout -dates 2>/dev/null"
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        out, err = proc.communicate()
+
+        # If there's an error (or no output) while checking SSL, log the error.
+        if proc.returncode != 0 or not out:
+            print(f"SSL check failed for {url}: {err}")
+        else:
+            # Print the valid SSL certificate information.
+            print(f"SSL for {url} is valid:\n{out.decode()}")
+
+def main():
+    # Iterate over each specified cluster.
+    for cluster in CLUSTERS:
+        # Switch context to the current cluster. If successful, proceed with fetching ingresses and checking SSL.
+        if switch_context(cluster):
+            print(f"Checking ingresses in cluster {cluster}")
+            ingresses = get_ingresses()
+            urls = build_urls(ingresses)
+            check_ssl(urls)
+        else:
+            # If context switch fails, skip the SSL check for the current cluster.
+            print(f"Skipping SSL check for cluster {cluster}")
+
+# Python best practice: the usual boilerplate to call the main function.
+if __name__ == "__main__":
+    main()
