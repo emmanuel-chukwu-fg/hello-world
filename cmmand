@@ -20,19 +20,23 @@ CLUSTERS = [
 
 def switch_context(cluster_info):
     """
-    Switches the kubectl context to the specified cluster.
+    Switches the kubectl context to the specified context.
     """
-    cmd = f"gcloud container clusters get-credentials {cluster_info['name']} --project {cluster_info['project']} --region europe-west1-b"
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    # Extract the context from the cluster information dictionary.
+    context = cluster_info['context']
+    # Command to switch kubectl context to the specified context.
+    cmd = ['kubectl', 'config', 'use-context', context]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
-    # Check the returncode attribute for the exit status
-    if proc.returncode == 0:
-        print(f"Context switched to {cluster_info['name']}. Output: {out.decode()}")
-        return True
-    else:
-        print(f"Error switching context: {err.decode()}")
+    # If there's an error switching the context, log it and return False.
+    if proc.returncode != 0:
+        print(f"Error switching to context {context}: {err.decode()}")
         return False
+
+    # Context switch successful.
+    print(f"Switched to context {context}")
+    return True
 
 def get_ingresses():
     """
@@ -89,12 +93,12 @@ def main():
     """
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            print(f"Checking ingresses in cluster {cluster_info['name']}")
+            print(f"Checking ingresses in context {cluster_info['context']} for cluster {cluster_info['name']}")
             ingresses = get_ingresses()
             urls = build_urls(ingresses)
             check_endpoints(urls)
         else:
-            print(f"Skipping SSL check for cluster {cluster_info['name']}")
+            print(f"Skipping SSL check for context {cluster_info['context']} in cluster {cluster_info['name']}")
 
 if __name__ == "__main__":
     main()
