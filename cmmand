@@ -93,3 +93,101 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+///////////////
+
+import subprocess
+import json
+
+# Define your clusters with relevant details.
+CLUSTERS = [
+    {"name": "non-prod-buying", "project": "project1", "context": "context1"},
+    # ... other clusters ...
+]
+
+def switch_context(cluster_info):
+    """
+    Switches the kubectl context to the specified context.
+    """
+    context = cluster_info['context']
+    cmd = ['kubectl', 'config', 'use-context', context]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    if proc.returncode != 0:
+        print(f"Error switching to context {context}: {err.decode()}")
+        return False
+
+    print(f"Switched to context {context}")
+    return True
+
+def get_ingresses():
+    """
+    Retrieves all Ingress resources from the current kubectl context.
+    """
+    cmd = "kubectl get ingress --all-namespaces -o json"
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+
+    if proc.returncode != 0:
+        print(f"Error fetching ingresses: {err.decode()}")
+        return []
+    
+    return json.loads(out.decode())['items']
+
+def build_urls(ingresses):
+    """
+    Constructs URLs for each service based on the ingress data.
+    """
+    urls = []
+    for ingress in ingresses:
+        annotations = ingress['metadata'].get('annotations', {})
+        if 'nginx.ingress.kubernetes.io/rewrite-target' in annotations:
+            base_path = annotations['nginx.ingress.kubernetes.io/rewrite-target']
+        else:
+            base_path = '/'
+        
+        for rule in ingress.get('spec', {}).get('rules', []):
+            host = rule.get('host', '')
+            for path in rule.get('http', {}).get('paths', []):
+                urls.append(f"https://{host}{base_path}health")
+    
+    return urls
+
+def check_endpoints(urls):
+    """
+    Checks each endpoint to ensure it's up and running.
+    """
+    for url in urls:
+        try:
+            # Using Python's built-in module 'http.client' to make requests
+            # This would avoid any potential issues with subprocess and command line parsing
+            connection = http.client.HTTPSConnection(url, timeout=10)
+            connection.request("GET", "/")
+            response = connection.getresponse()
+            http_status = response.status
+
+            if http_status == 200:
+                print(f"{url}: '{http_status}' - 200 Returned SSL Working Fine")
+            elif http_status == 404:
+                print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
+            else:
+                print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
+
+            connection.close()
+        except Exception as e:
+            print(f"Error checking {url}: {str(e)}")
+
+def main():
+    """
+    Main function to iterate over all clusters and check the health of their ingresses.
+    """
+    for cluster_info in CLUSTERS:
+        if switch_context(cluster_info):
+            ingresses = get_ingresses()
+            urls = build_urls(ingresses)
+            check_endpoints(urls)
+
+if __name__ == "__main__":
+    main()
+
