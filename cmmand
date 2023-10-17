@@ -28,93 +28,6 @@ def switch_context(cluster_info):
     out, err = proc.communicate()
 
     if proc.returncode != 0:
-        return False
-
-    return True
-
-def get_ingresses():
-    """
-    Retrieves all Ingress resources from the current kubectl context.
-    """
-    cmd = "kubectl get ingress --all-namespaces -o json"
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-    out, err = proc.communicate()
-
-    if proc.returncode != 0:
-        return []
-    
-    return json.loads(out.decode())['items']
-
-def build_urls(ingresses):
-    """
-    Constructs URLs for each service based on the ingress data.
-    """
-    urls = []
-    for ingress in ingresses:
-        annotations = ingress['metadata'].get('annotations', {})
-        if 'nginx.ingress.kubernetes.io/rewrite-target' in annotations:
-            base_path = annotations['nginx.ingress.kubernetes.io/rewrite-target']
-        else:
-            base_path = '/'
-        
-        for rule in ingress.get('spec', {}).get('rules', []):
-            host = rule.get('host', '')
-            for path in rule.get('http', {}).get('paths', []):
-                urls.append(f"https://{host}{base_path}health")
-    
-    return urls
-
-def check_endpoints(urls):
-    """
-    Checks each endpoint to ensure it's up and running.
-    """
-    for url in urls:
-        cmd = f"curl -k -s -o /dev/null -w '%{{http_code}}' {url}"
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        out, err = proc.communicate()
-
-        http_status = out.decode().strip()
-        if http_status == "200":
-            print(f"{url}: '{http_status}' - 200 Returned SSL Working Fine")
-        elif http_status == "404":
-            print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
-        else:
-            print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
-
-def main():
-    """
-    Main function to iterate over all clusters and check the health of their ingresses.
-    """
-    for cluster_info in CLUSTERS:
-        if switch_context(cluster_info):
-            ingresses = get_ingresses()
-            urls = build_urls(ingresses)
-            check_endpoints(urls)
-
-if __name__ == "__main__":
-    main()
-
-///////////////
-
-import subprocess
-import json
-
-# Define your clusters with relevant details.
-CLUSTERS = [
-    {"name": "non-prod-buying", "project": "project1", "context": "context1"},
-    # ... other clusters ...
-]
-
-def switch_context(cluster_info):
-    """
-    Switches the kubectl context to the specified context.
-    """
-    context = cluster_info['context']
-    cmd = ['kubectl', 'config', 'use-context', context]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, err = proc.communicate()
-
-    if proc.returncode != 0:
         print(f"Error switching to context {context}: {err.decode()}")
         return False
 
@@ -158,6 +71,12 @@ def check_endpoints(urls):
     """
     Checks each endpoint to ensure it's up and running.
     """
+    # Group messages based on the status codes
+    status_200 = []
+    status_404 = []
+    other_statuses = []
+    unexpected_outputs = []
+
     for url in urls:
         cmd = f"curl -k -s -o /dev/null -w '%{{http_code}}' {url}"
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
@@ -170,16 +89,34 @@ def check_endpoints(urls):
         try:
             http_status_code = int(http_status)
         except ValueError:  # This will catch cases where http_status is not a number
-            print(f"Unexpected output for {url}: {http_status}")
+            unexpected_outputs.append(f"Unexpected output for {url}: {http_status}")
             continue
 
-        # Check the HTTP status code and print the appropriate message
+        # Check the HTTP status code and categorize the message
+        message = f"{url}: '{http_status_code}'"
         if http_status_code == 200:
-            print(f"{url}: '{http_status_code}' - SSL Working Fine")
+            status_200.append(f"{message} - SSL Working Fine")
         elif http_status_code == 404:
-            print(f"{url}: '{http_status_code}' - Error 404 returned, please investigate.")
+            status_404.append(f"{message} - Error 404 returned, please investigate.")
         else:
-            print(f"{url}: '{http_status_code}' - Error {http_status_code} returned, please investigate.")
+            other_statuses.append(f"{message} - Error {http_status_code} returned, please investigate.")
+
+    # Print the results grouped by status code
+    print("\n--- Status 200 ---")
+    for message in status_200:
+        print(message)
+
+    print("\n--- Status 404 ---")
+    for message in status_404:
+        print(message)
+
+    print("\n--- Other Statuses ---")
+    for message in other_statuses:
+        print(message)
+
+    print("\n--- Unexpected Outputs ---")
+    for message in unexpected_outputs:
+        print(message)
 
 def main():
     """
