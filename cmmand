@@ -192,4 +192,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+Unexpected output for https://test-wh-reform-api.anthos.sportski.com/health: '200'
+Unexpected output for https://test-wh-self-service.anthos.sportski.com/health: '200'
+Unexpected output for https://test-wh-self-service-api.anthos.sportski.com/health: '404'
