@@ -8,6 +8,7 @@ kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.name
 kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace},{@.metadata.name}{'\n'}{end}" | awk -F, '{system("echo -n "$1","$2","; kubectl exec -n "$1" "$2" -- dotnet --version 2>/dev/null")}' | tee pods_dotnet_versions.csv
 kubectl get pods --all-namespaces -o jsonpath="{range .items[*]}{@.metadata.namespace} {@.metadata.name}{'\n'}{end}" | xargs -n2 sh -c 'dotnet_version=$(kubectl exec -n $0 $1 -- sh -c "command -v dotnet && dotnet --version" 2>/dev/null); if [ -n "$dotnet_version" ]; then echo "$0,$1,$dotnet_version"; fi' | tee pods_dotnet_versions.csv
 
+
 import subprocess
 import json
 
@@ -22,12 +23,15 @@ def switch_context(cluster_info):
     Switches the kubectl context to the specified cluster.
     """
     cmd = f"gcloud container clusters get-credentials {cluster_info['name']} --project {cluster_info['project']} --region europe-west1-b"
-    try:
-        subprocess.run(cmd, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(f"Context switched to {cluster_info['name']}")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
+
+    # Check the returncode attribute for the exit status
+    if proc.returncode == 0:
+        print(f"Context switched to {cluster_info['name']}. Output: {out.decode()}")
         return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error switching context: {e}")
+    else:
+        print(f"Error switching context: {err.decode()}")
         return False
 
 def get_ingresses():
@@ -35,18 +39,15 @@ def get_ingresses():
     Retrieves all Ingress resources from the current kubectl context.
     """
     cmd = "kubectl get ingress --all-namespaces -o json"
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        out, err = proc.communicate()
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    out, err = proc.communicate()
 
-        if proc.returncode != 0:
-            print(f"Error getting ingresses: {err.decode()}")
-            return []
-        
-        return json.loads(out.decode())['items']
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
+    if proc.returncode != 0:
+        print(f"Error getting ingresses: {err.decode()}")
         return []
+    
+    print(f"Ingresses retrieved: {out.decode()}")  # Print the output for verification
+    return json.loads(out.decode())['items']
 
 def build_urls(ingresses):
     """
@@ -64,6 +65,8 @@ def build_urls(ingresses):
             host = rule.get('host', '')
             for path in rule.get('http', {}).get('paths', []):
                 urls.append(f"https://{host}{base_path}health")
+    
+    print(f"URLs constructed: {urls}")  # Print the URLs for verification
     return urls
 
 def check_endpoints(urls):
@@ -95,4 +98,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
