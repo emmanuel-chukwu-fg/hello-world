@@ -159,24 +159,20 @@ def check_endpoints(urls):
     Checks each endpoint to ensure it's up and running.
     """
     for url in urls:
-        try:
-            # Using Python's built-in module 'http.client' to make requests
-            # This would avoid any potential issues with subprocess and command line parsing
-            connection = http.client.HTTPSConnection(url, timeout=10)
-            connection.request("GET", "/")
-            response = connection.getresponse()
-            http_status = response.status
+        cmd = f"curl -k -s -o /dev/null -w '%{{http_code}}' {url}"
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        out, err = proc.communicate()
 
-            if http_status == 200:
-                print(f"{url}: '{http_status}' - 200 Returned SSL Working Fine")
-            elif http_status == 404:
-                print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
-            else:
-                print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
+        # Decode the output and strip whitespace
+        http_status = out.decode().strip()
 
-            connection.close()
-        except Exception as e:
-            print(f"Error checking {url}: {str(e)}")
+        # Compare the status code correctly as strings
+        if http_status == '200':
+            print(f"{url}: '{http_status}' - SSL Working Fine")
+        elif http_status == '404':
+            print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
+        else:
+            print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
 
 def main():
     """
@@ -190,4 +186,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
