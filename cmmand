@@ -70,8 +70,8 @@ def build_urls(ingresses):
                     https_scheme = 'https'  # If TLS is configured, use HTTPS.
                     break
 
-            # Construct the URL and add it to the list.
-            url = f"{https_scheme}://{host}"
+            # Construct the URL with the "/health" endpoint appended and add it to the list.
+            url = f"{https_scheme}://{host}/health"
             urls.append(url)
 
     return urls
