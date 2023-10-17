@@ -18,9 +18,15 @@ CLUSTERS = [
     # ... other clusters ...
 ]
 
+# ANSI escape codes for coloring text.
+class ANSIColors:
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    # Add more colors if needed
+
 def switch_context(cluster_info):
     """
-    Switches the kubectl context to the specified context.
+    Switches the kubectl context to the specified cluster.
     """
     context = cluster_info['context']
     cmd = ['kubectl', 'config', 'use-context', context]
@@ -36,42 +42,31 @@ def switch_context(cluster_info):
 
 def get_ingresses():
     """
-    Retrieves all Ingress resources from the current kubectl context.
+    Fetches all ingresses in the current kubectl context.
     """
-    cmd = "kubectl get ingress --all-namespaces -o json"
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    cmd = ['kubectl', 'get', 'ing', '-o', 'json', '--all-namespaces']
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if proc.returncode != 0:
         print(f"Error fetching ingresses: {err.decode()}")
         return []
-    
-    return json.loads(out.decode())['items']
 
-def build_urls(ingresses):
-    """
-    Constructs URLs for each service based on the ingress data.
-    """
+    ingresses = json.loads(out.decode())['items']
     urls = []
-    for ingress in ingresses:
-        annotations = ingress['metadata'].get('annotations', {})
-        if 'nginx.ingress.kubernetes.io/rewrite-target' in annotations:
-            base_path = annotations['nginx.ingress.kubernetes.io/rewrite-target']
-        else:
-            base_path = '/'
-        
-        for rule in ingress.get('spec', {}).get('rules', []):
-            host = rule.get('host', '')
-            for path in rule.get('http', {}).get('paths', []):
-                urls.append(f"https://{host}{base_path}health")
-    
+    for ing in ingresses:
+        for rule in ing['spec']['rules']:
+            host = rule['host']
+            if 'http' not in host:
+                host = 'https://' + host
+            urls.append(host + '/health')
+
     return urls
 
 def check_endpoints(urls):
     """
     Checks each endpoint to ensure it's up and running.
     """
-    # Group messages based on the status codes
     status_200 = []
     status_404 = []
     other_statuses = []
@@ -82,26 +77,22 @@ def check_endpoints(urls):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         out, err = proc.communicate()
 
-        # Decode the output, strip whitespace and remove quotes
-        http_status = out.decode().strip().strip("'")  # Remove quotes around the status code
+        http_status = out.decode().strip().strip("'")
 
-        # Ensure the status code is interpreted as an integer for comparison
         try:
             http_status_code = int(http_status)
-        except ValueError:  # This will catch cases where http_status is not a number
-            unexpected_outputs.append(f"Unexpected output for {url}: {http_status}")
+        except ValueError:
+            unexpected_outputs.append(f"{ANSIColors.RED}Unexpected output for {url}: {http_status}{ANSIColors.ENDC}")
             continue
 
-        # Check the HTTP status code and categorize the message
         message = f"{url}: '{http_status_code}'"
         if http_status_code == 200:
             status_200.append(f"{message} - SSL Working Fine")
         elif http_status_code == 404:
-            status_404.append(f"{message} - Error 404 returned, please investigate.")
+            status_404.append(f"{ANSIColors.RED}{message} - Error 404 returned, please investigate.{ANSIColors.ENDC}")
         else:
-            other_statuses.append(f"{message} - Error {http_status_code} returned, please investigate.")
+            other_statuses.append(f"{ANSIColors.RED}{message} - Error {http_status_code} returned, please investigate.{ANSIColors.ENDC}")
 
-    # Print the results grouped by status code
     print("\n--- Status 200 ---")
     for message in status_200:
         print(message)
@@ -119,14 +110,15 @@ def check_endpoints(urls):
         print(message)
 
 def main():
-    """
-    Main function to iterate over all clusters and check the health of their ingresses.
-    """
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            ingresses = get_ingresses()
-            urls = build_urls(ingresses)
-            check_endpoints(urls)
+            urls = get_ingresses()
+            if urls:
+                check_endpoints(urls)
+            else:
+                print(f"No ingresses found in cluster: {cluster_info['name']}")
+        else:
+            print(f"Skipping checks for cluster: {cluster_info['name']}")
 
 if __name__ == "__main__":
     main()
