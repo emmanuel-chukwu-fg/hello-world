@@ -105,15 +105,4 @@ if __name__ == "__main__":
 
 
 
-Error reaching https://test-wh-kronos-api.anthos.sportski.com/health: '404' - 
-Error reaching https://test-wh-kronos-api.anthos.sportski.com/health: '404' - 
-Error reaching https://test-wh-putwall-api.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-putwall-api.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-reform-api.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-reform-api.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-self-service.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-self-service-api.anthos.sportski.com/health: '404' - 
-Error reaching https://test-wh-self-service.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-self-service-api.anthos.sportski.com/health: '404' - 
-Error reaching https://test-wh-userevents-api.anthos.sportski.com/health: '200' - 
-Error reaching https://test-wh-userevents-api.anthos.sportski.com/health: '200' - 
+
