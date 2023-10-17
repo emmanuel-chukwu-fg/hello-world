@@ -166,13 +166,19 @@ def check_endpoints(urls):
         # Decode the output and strip whitespace
         http_status = out.decode().strip()
 
-        # Compare the status code correctly as strings
-        if http_status == '200':
-            print(f"{url}: '{http_status}' - SSL Working Fine")
-        elif http_status == '404':
-            print(f"{url}: '{http_status}' - Error 404 returned, please investigate.")
+        # Ensure the status code is interpreted as an integer for comparison
+        try:
+            http_status_code = int(http_status)
+        except ValueError:
+            print(f"Unexpected output for {url}: {http_status}")
+            continue
+
+        if http_status_code == 200:
+            print(f"{url}: '{http_status_code}' - SSL Working Fine")
+        elif http_status_code == 404:
+            print(f"{url}: '{http_status_code}' - Error 404 returned, please investigate.")
         else:
-            print(f"{url}: '{http_status}' - Error {http_status} returned, please investigate.")
+            print(f"{url}: '{http_status_code}' - Error {http_status_code} returned, please investigate.")
 
 def main():
     """
@@ -186,3 +192,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
