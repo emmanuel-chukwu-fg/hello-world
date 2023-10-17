@@ -31,11 +31,9 @@ def switch_context(cluster_info):
 
     # If there's an error switching the context, log it and return False.
     if proc.returncode != 0:
-        print(f"Error switching to context {context}: {err.decode()}")
         return False
 
     # Context switch successful.
-    print(f"Switched to context {context}")
     return True
 
 def get_ingresses():
@@ -47,10 +45,8 @@ def get_ingresses():
     out, err = proc.communicate()
 
     if proc.returncode != 0:
-        print(f"Error getting ingresses: {err.decode()}")
         return []
     
-    print(f"Ingresses retrieved: {out.decode()}")  # Print the output for verification
     return json.loads(out.decode())['items']
 
 def build_urls(ingresses):
@@ -70,7 +66,6 @@ def build_urls(ingresses):
             for path in rule.get('http', {}).get('paths', []):
                 urls.append(f"https://{host}{base_path}health")
     
-    print(f"URLs constructed: {urls}")  # Print the URLs for verification
     return urls
 
 def check_endpoints(urls):
@@ -82,10 +77,11 @@ def check_endpoints(urls):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         out, err = proc.communicate()
 
-        if out.strip() == b"200":
-            print(f"Success: {url} is working fine.")
+        http_status = out.decode().strip()
+        if http_status == "200":
+            print(f"{url}: '{http_status}' - SSL Working Fine")
         else:
-            print(f"Error reaching {url}: {out.decode()} - {err.decode()}")
+            print(f"{url}: '{http_status}' - Error {http_status} returned")
 
 def main():
     """
@@ -93,16 +89,10 @@ def main():
     """
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            print(f"Checking ingresses in context {cluster_info['context']} for cluster {cluster_info['name']}")
             ingresses = get_ingresses()
             urls = build_urls(ingresses)
             check_endpoints(urls)
-        else:
-            print(f"Skipping SSL check for context {cluster_info['context']} in cluster {cluster_info['name']}")
 
 if __name__ == "__main__":
     main()
-
-
-
 
