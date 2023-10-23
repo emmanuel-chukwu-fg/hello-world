@@ -1,20 +1,21 @@
 import subprocess
 import json
+from urllib.parse import urlparse
 
-# Define your clusters with relevant details.
+# ANSI escape sequences for colored output
+class ANSIColors:
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+    ENDC = '\033[0m'
+
+# Define your clusters here
 CLUSTERS = [
-    {"name": "non-prod-buying", "project": "project1", "context": "context1"},
-    # ... other clusters ...
+    {"name": "non-prod-buying", "project": "xxxxxx", "context": ""},
+    # Add other clusters...
 ]
 
-# ANSI escape codes for coloring text.
-class ANSIColors:
-    RED = '\033[91m'
-    ENDC = '\033[0m'
-    GREEN = '\033[92m'
-
 def switch_context(cluster_info):
-    # Switches the kubectl context to the specified cluster.
+    print(f"Switching context to: {cluster_info}")  # Debugging print
     context = cluster_info['context']
     cmd = ['kubectl', 'config', 'use-context', context]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -28,80 +29,78 @@ def switch_context(cluster_info):
     return True
 
 def get_ingresses():
-    # Fetches all ingresses in the current kubectl context.
-    cmd = ['kubectl', 'get', 'ing', '-o', 'json', '--all-namespaces']
+    print("Fetching ingresses...")  # Debugging print
+    cmd = ['kubectl', 'get', 'ingresses', '-o', 'json']
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if proc.returncode != 0:
         print(f"Error fetching ingresses: {err.decode()}")
-        return []
+        return None
 
-    ingresses = json.loads(out.decode())['items']
-    urls = []
+    ingresses = json.loads(out.decode())
+    print(f"Fetched ingresses: {ingresses}")  # Debugging print
+    return ingresses
 
-    for ing in ingresses:
-        rules = ing.get('spec', {}).get('rules', [])
-        for rule in rules:
-            host = rule.get('host', '')
-            if host:
-                url = f"https://{host}/health"
-                urls.append(url)
-    
-    return urls
+def ingress_exists(host, ingresses):
+    print(f"Checking if ingress exists for host: {host}")  # Debugging print
+    for ingress in ingresses['items']:
+        for rule in ingress.get('spec', {}).get('rules', []):
+            if host == rule.get('host'):
+                print(f"Found matching ingress for host: {host}")  # Debugging print
+                return True
+    print(f"No ingress found for host: {host}")  # Debugging print
+    return False
 
-def check_endpoints(urls):
-    # Initialize the results dictionary.
-    results = {
-        "200": [],
-        "404": [],
-        "no_ingress": [],
-        "other": []
-    }
+def check_endpoint(url, ingresses):
+    print(f"Checking URL: {url}")  # Debugging print
+    host = urlparse(url).netloc
+    cmd = ['curl', '-ks', '-o', '/dev/null', '-w', '%{http_code}', url]
 
-    for url in urls:
-        response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        status_code, error = response.communicate()
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
 
-        if error:
-            print(f"Error fetching {url}: {error.decode()}")
-            continue
+    if proc.returncode != 0:
+        print(f"Error checking {url}: {err.decode()}")
+        return None
 
-        status_code = status_code.decode().strip()
+    status_code = out.decode().strip()
+    print(f"Status code for {url}: {status_code}")  # Debugging print
 
-        # Classify the result based on the status_code.
-        if status_code == "200":
-            results["200"].append(f"{url}: '200' - SSL Working Fine")
-        elif status_code == "404":
-            # We'll check if this 404 is due to no ingress or an actual 404 from the server.
-            if "no ingress" in url:  # Placeholder condition, replace with actual check for ingress presence.
-                results["no_ingress"].append(f"{ANSIColors.RED}{url}: '404' - No ingress found{ANSIColors.ENDC}")
-            else:
-                results["404"].append(f"{ANSIColors.RED}{url}: '404' - Error 404 returned, please investigate{ANSIColors.ENDC}")
+    # Handle response based on status code
+    if status_code == "200":
+        return f"{ANSIColors.GREEN}{url}: '200' - SSL Working Fine{ANSIColors.ENDC}"
+    elif status_code == "404":
+        if ingress_exists(host, ingresses):
+            return f"{ANSIColors.RED}{url}: '404' - Error 404 returned, please investigate{ANSIColors.ENDC}"
         else:
-            results["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
-
-    return results
+            return f"{url}: '404' - Appname is an internal app, no ingress found"
+    else:
+        return f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}"
 
 def main():
+    print("Script started...")  # Debugging print
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            urls = get_ingresses()
-            if urls:
-                results = check_endpoints(urls)
-                print_results(results)
+            ingresses = get_ingresses()
+            if ingresses:
+                urls = []  # populate this with the URLs you want to check
+                for ingress in ingresses['items']:
+                    for rule in ingress.get('spec', {}).get('rules', []):
+                        host = rule.get('host')
+                        if host:  # assuming http for simplicity, adjust as needed
+                            urls.append(f"http://{host}/health")
+
+                for url in urls:
+                    result = check_endpoint(url, ingresses)
+                    if result:
+                        print(result)
             else:
-                print(f"{ANSIColors.RED}No ingress found in cluster: {cluster_info['name']}{ANSIColors.ENDC}")
+                print(f"{ANSIColors.RED}No ingresses found in the cluster: {cluster_info['name']}{ANSIColors.ENDC}")
         else:
             print(f"Skipping checks for cluster: {cluster_info['name']}")
 
-def print_results(results):
-    # Print the results grouped by status code.
-    for status_code, messages in results.items():
-        if messages:  # Only print if there are messages for this status code.
-            print(f"\nResults for status code: {status_code}")
-            for message in messages:
-                print(message)
+    print("Script execution finished.")  # Debugging print
 
 if __name__ == "__main__":
     main()
