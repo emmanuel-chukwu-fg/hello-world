@@ -55,3 +55,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+"https://test-wh-kronos-api.anthos.sportski.com/health": "Error: "
+"http://test-wh-kronos-api.anthos.sportski.com/health": "Error: "
+"https://test-wh-putwall-api.anthos.sportski.com/health": "Error: "
+"http://test-wh-putwall-api.anthos.sportski.com/health": "Error: "
+"https://test-wh-reform-api.anthos.sportski.com/health": "Error: "
+"https://test-wh-reform-api.anthos.sportski.com/health": "Error: "
+"https://test-wh-self-service.anthos.sportski.com/health": "Error: "
+"http://test-wh-self-service.anthos.sportski.com/health": "Error: "
+"https://test-wh-userevents-api.anthos.sportski.com/health": "Error: "
+"http://test-wh-userevents-api.anthos.sportski.com/health": "Error: "
