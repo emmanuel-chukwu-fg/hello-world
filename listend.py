@@ -65,3 +65,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+PS C:\Users\echukwu\OneDrive - Frasers Group\Desktop\ProjectFiles> & C:/Users/echukwu/AppData/Local/Programs/Python/Python311/python.exe "c:/Users/echukwu/OneDrive - Frasers Group/Desktop/ProjectFiles/scripts/python/exception.py"
+Switched to context connectgateway_corp-test-mgmt-anthos-3578_global_non-prod-warehouse
+"https://apache-test-f5.anthos.sportski.com/health": "Error: "
