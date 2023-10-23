@@ -1,6 +1,5 @@
 import subprocess
 import json
-import sys
 
 # Define your clusters with relevant details.
 CLUSTERS = [
@@ -13,7 +12,6 @@ class ANSIColors:
     RED = '\033[91m'
     ENDC = '\033[0m'
     GREEN = '\033[92m'
-    # Add more colors if needed
 
 def switch_context(cluster_info):
     # Switches the kubectl context to the specified cluster.
@@ -40,70 +38,68 @@ def get_ingresses():
         return []
 
     ingresses = json.loads(out.decode())['items']
-    apps_with_ingress = []
+    urls = []
 
-    # Assuming 'app' label holds the application name
     for ing in ingresses:
-        try:
-            app_name = ing['metadata']['labels']['app']
-            rules = ing['spec']['rules']
-            if rules:
-                for rule in rules:
-                    host = rule['host']
-                    if 'http' not in host:
-                        host = 'https://' + host
-                    apps_with_ingress.append({"app": app_name, "url": host + '/health', "has_ingress": True})
+        rules = ing.get('spec', {}).get('rules', [])
+        for rule in rules:
+            host = rule.get('host', '')
+            if host:
+                url = f"https://{host}/health"
+                urls.append(url)
+    
+    return urls
+
+def check_endpoints(urls):
+    # Initialize the results dictionary.
+    results = {
+        "200": [],
+        "404": [],
+        "no_ingress": [],
+        "other": []
+    }
+
+    for url in urls:
+        response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        status_code, error = response.communicate()
+
+        if error:
+            print(f"Error fetching {url}: {error.decode()}")
+            continue
+
+        status_code = status_code.decode().strip()
+
+        # Classify the result based on the status_code.
+        if status_code == "200":
+            results["200"].append(f"{url}: '200' - SSL Working Fine")
+        elif status_code == "404":
+            # We'll check if this 404 is due to no ingress or an actual 404 from the server.
+            if "no ingress" in url:  # Placeholder condition, replace with actual check for ingress presence.
+                results["no_ingress"].append(f"{ANSIColors.RED}{url}: '404' - No ingress found{ANSIColors.ENDC}")
             else:
-                apps_with_ingress.append({"app": app_name, "url": None, "has_ingress": False})
-        except KeyError:
-            continue  # Handle the case where expected fields are not found
-
-    return apps_with_ingress
-
-def check_endpoints(apps):
-    # Check each endpoint and categorize the output based on status codes or ingress availability.
-    status_codes = {"200": [], "404": [], "no_ingress": [], "other": []}
-
-    for app in apps:
-        url = app["url"]
-        if app["has_ingress"]:
-            response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            status_code, error = response.communicate()
-
-            if error:
-                print(f"Error fetching {url}: {error.decode()}")
-                continue
-
-            status_code = status_code.decode().strip()
-
-            if status_code == "200":
-                status_codes["200"].append(f"{ANSIColors.GREEN}{url}: '{status_code}' - SSL Working Fine{ANSIColors.ENDC}")
-            elif status_code == "404":
-                status_codes["404"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Error 404 returned, please investigate{ANSIColors.ENDC}")
-            else:
-                status_codes["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
+                results["404"].append(f"{ANSIColors.RED}{url}: '404' - Error 404 returned, please investigate{ANSIColors.ENDC}")
         else:
-            status_codes["no_ingress"].append(f"{ANSIColors.RED}No ingress found for app: {app['app']}{ANSIColors.ENDC}")
+            results["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
 
-    return status_codes
+    return results
 
 def main():
-    all_status_codes = {"200": [], "404": [], "no_ingress": [], "other": []}
-
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            apps = get_ingresses()
-            status_codes = check_endpoints(apps)
-
-            for status in all_status_codes.keys():
-                all_status_codes[status].extend(status_codes[status])
+            urls = get_ingresses()
+            if urls:
+                results = check_endpoints(urls)
+                print_results(results)
+            else:
+                print(f"{ANSIColors.RED}No ingress found in cluster: {cluster_info['name']}{ANSIColors.ENDC}")
         else:
             print(f"Skipping checks for cluster: {cluster_info['name']}")
 
-    # Printing all results after checks have been completed for all clusters
-    for status, messages in all_status_codes.items():
-        if messages:
-            print(f"\nResults for status code: {status}")
+def print_results(results):
+    # Print the results grouped by status code.
+    for status_code, messages in results.items():
+        if messages:  # Only print if there are messages for this status code.
+            print(f"\nResults for status code: {status_code}")
             for message in messages:
                 print(message)
 
