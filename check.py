@@ -101,3 +101,120 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+Fetching ingresses...
+Error checking http://argo-warehouse-test.anthos.sportski.com/health: 
+Error checking http://apache-test-f5.anthos.sportski.com/health: 
+Error checking http://dev-wh-amr-sync-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-amr-sync-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-container-checker-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-container-checker-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-gateway-ui.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-gateway-ui.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-goodsin-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-goodsin-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-inventory-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-inventory-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-proxy-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-proxy-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-tunnelling-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-highjump-tunnelling-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-kronos-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-kronos-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-putwall-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-putwall-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-reform-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-reform-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-self-service.anthos.sportski.com/health: 
+Error checking http://dev-wh-self-service-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-self-service.anthos.sportski.com/health: 
+Error checking http://dev-wh-self-service-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-userevents-api.anthos.sportski.com/health: 
+Error checking http://dev-wh-userevents-api.anthos.sportski.com/health: 
+Error checking http://apache-test-f5.anthos.sportski.com/health: 
+Error checking http://test-wh-amr-sync-api.anthos.sportski.com/health: 
+Error checking http://test-wh-amr-sync-api.anthos.sportski.com/health: 
+Error checking http://test-wh-container-checker-api.anthos.sportski.com/health: 
+Error checking http://test-wh-container-checker-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-gateway-ui.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-gateway-ui.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-goodsin-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-goodsin-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-inventory-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-inventory-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-proxy-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-proxy-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-tunnelling-api.anthos.sportski.com/health: 
+Error checking http://test-wh-highjump-tunnelling-api.anthos.sportski.com/health: 
+Error checking http://test-wh-kronos-api.anthos.sportski.com/health: 
+Error checking http://test-wh-kronos-api.anthos.sportski.com/health: 
+Error checking http://test-wh-putwall-api.anthos.sportski.com/health: 
+Error checking http://test-wh-putwall-api.anthos.sportski.com/health: 
+Error checking http://test-wh-reform-api.anthos.sportski.com/health: 
+Error checking http://test-wh-reform-api.anthos.sportski.com/health: 
+Error checking http://test-wh-self-service.anthos.sportski.com/health: 
+Error checking http://test-wh-self-service-api.anthos.sportski.com/health: 
+Error checking http://test-wh-self-service.anthos.sportski.com/health: 
+Error checking http://test-wh-self-service-api.anthos.sportski.com/health: 
+Error checking http://test-wh-userevents-api.anthos.sportski.com/health: 
+Error checking http://test-wh-userevents-api.anthos.sportski.com/health: 
+Results:
+200 SSL working fine:
+404 Error, please investigate:
+Internal apps, no ingress found:
+Unexpected status code returned:
+http://argo-warehouse-test.anthos.sportski.com: None
+http://apache-test-f5.anthos.sportski.com: None
+http://dev-wh-amr-sync-api.anthos.sportski.com: None
+http://dev-wh-amr-sync-api.anthos.sportski.com: None
+http://dev-wh-container-checker-api.anthos.sportski.com: None
+http://dev-wh-container-checker-api.anthos.sportski.com: None
+http://dev-wh-highjump-gateway-ui.anthos.sportski.com: None
+http://dev-wh-highjump-gateway-ui.anthos.sportski.com: None
+http://dev-wh-highjump-goodsin-api.anthos.sportski.com: None
+http://dev-wh-highjump-goodsin-api.anthos.sportski.com: None
+http://dev-wh-highjump-inventory-api.anthos.sportski.com: None
+http://dev-wh-highjump-inventory-api.anthos.sportski.com: None
+http://dev-wh-highjump-proxy-api.anthos.sportski.com: None
+http://dev-wh-highjump-proxy-api.anthos.sportski.com: None
+http://dev-wh-highjump-tunnelling-api.anthos.sportski.com: None
+http://dev-wh-highjump-tunnelling-api.anthos.sportski.com: None
+http://dev-wh-kronos-api.anthos.sportski.com: None
+http://dev-wh-kronos-api.anthos.sportski.com: None
+http://dev-wh-putwall-api.anthos.sportski.com: None
+http://dev-wh-putwall-api.anthos.sportski.com: None
+http://dev-wh-reform-api.anthos.sportski.com: None
+http://dev-wh-reform-api.anthos.sportski.com: None
+http://dev-wh-self-service.anthos.sportski.com: None
+http://dev-wh-self-service-api.anthos.sportski.com: None
+http://dev-wh-self-service.anthos.sportski.com: None
+http://dev-wh-self-service-api.anthos.sportski.com: None
+http://dev-wh-userevents-api.anthos.sportski.com: None
+http://dev-wh-userevents-api.anthos.sportski.com: None
+http://apache-test-f5.anthos.sportski.com: None
+http://test-wh-amr-sync-api.anthos.sportski.com: None
+http://test-wh-amr-sync-api.anthos.sportski.com: None
+http://test-wh-container-checker-api.anthos.sportski.com: None
+http://test-wh-container-checker-api.anthos.sportski.com: None
+http://test-wh-highjump-gateway-ui.anthos.sportski.com: None
+http://test-wh-highjump-gateway-ui.anthos.sportski.com: None
+http://test-wh-highjump-goodsin-api.anthos.sportski.com: None
+http://test-wh-highjump-goodsin-api.anthos.sportski.com: None
+http://test-wh-highjump-inventory-api.anthos.sportski.com: None
+http://test-wh-highjump-inventory-api.anthos.sportski.com: None
+http://test-wh-highjump-proxy-api.anthos.sportski.com: None
+http://test-wh-highjump-proxy-api.anthos.sportski.com: None
+http://test-wh-highjump-tunnelling-api.anthos.sportski.com: None
+http://test-wh-highjump-tunnelling-api.anthos.sportski.com: None
+http://test-wh-kronos-api.anthos.sportski.com: None
+http://test-wh-kronos-api.anthos.sportski.com: None
+http://test-wh-putwall-api.anthos.sportski.com: None
+http://test-wh-putwall-api.anthos.sportski.com: None
+http://test-wh-reform-api.anthos.sportski.com: None
+http://test-wh-reform-api.anthos.sportski.com: None
+http://test-wh-self-service.anthos.sportski.com: None
+http://test-wh-self-service-api.anthos.sportski.com: None
+http://test-wh-self-service.anthos.sportski.com: None
+http://test-wh-self-service-api.anthos.sportski.com: None
+http://test-wh-userevents-api.anthos.sportski.com: None
+http://test-wh-userevents-api.anthos.sportski.com: None
