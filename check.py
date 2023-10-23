@@ -36,11 +36,10 @@ def get_ingresses():
 
     if proc.returncode != 0:
         print(f"Error fetching ingresses: {err.decode()}")
-        return [], []
+        return []
 
     ingresses = json.loads(out.decode())['items']
     apps_with_ingress = []
-    apps_without_ingress = []
 
     # Assuming 'app' label holds the application name
     for ing in ingresses:
@@ -52,48 +51,46 @@ def get_ingresses():
                     host = rule['host']
                     if 'http' not in host:
                         host = 'https://' + host
-                    apps_with_ingress.append({"app": app_name, "url": host + '/health'})
+                    apps_with_ingress.append({"app": app_name, "url": host + '/health', "has_ingress": True})
             else:
-                apps_without_ingress.append(app_name)
+                apps_with_ingress.append({"app": app_name, "url": None, "has_ingress": False})
         except KeyError:
             continue  # Handle the case where expected fields are not found
 
-    return apps_with_ingress, apps_without_ingress
+    return apps_with_ingress
 
-def check_endpoints(apps_with_ingress):
-    # Check each endpoint that has an ingress and print the status.
-    status_codes = {"200": [], "404": [], "other": [], "no_ingress": []}
+def check_endpoints(apps):
+    # Check each endpoint and categorize the output based on status codes or ingress availability.
+    status_codes = {"200": [], "404": [], "no_ingress": [], "other": []}
 
-    for app in apps_with_ingress:
+    for app in apps:
         url = app["url"]
-        # The -k flag is used with curl to proceed without certificate validation, replace it if needed.
-        response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        status_code, error = response.communicate()
+        if app["has_ingress"]:
+            response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            status_code, error = response.communicate()
 
-        if error:
-            print(f"Error fetching {url}: {error.decode()}")
-            continue
+            if error:
+                print(f"Error fetching {url}: {error.decode()}")
+                continue
 
-        status_code = status_code.decode().strip()
+            status_code = status_code.decode().strip()
 
-        if status_code == "200":
-            status_codes["200"].append(f"{url}: '{status_code}' - SSL Working Fine")
-        elif status_code == "404":
-            status_codes["404"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Error 404 returned, please investigate{ANSIColors.ENDC}")
+            if status_code == "200":
+                status_codes["200"].append(f"{url}: '{status_code}' - SSL Working Fine")
+            elif status_code == "404":
+                status_codes["404"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Error 404 returned, please investigate{ANSIColors.ENDC}")
+            else:
+                status_codes["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
         else:
-            status_codes["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
+            status_codes["no_ingress"].append(f"{ANSIColors.RED}No ingress found for app: {app['app']}{ANSIColors.ENDC}")
 
     return status_codes
 
 def main():
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            apps_with_ingress, apps_without_ingress = get_ingresses()
-            status_codes = check_endpoints(apps_with_ingress)
-
-            # Adding apps without ingress to the status_codes under "no_ingress"
-            for app in apps_without_ingress:
-                status_codes["no_ingress"].append(f"Internal app with no ingress found: {app}")
+            apps = get_ingresses()
+            status_codes = check_endpoints(apps)
 
             # Printing all results
             for status, messages in status_codes.items():
