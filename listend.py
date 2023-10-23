@@ -19,42 +19,42 @@ def switch_context(cluster_info):
     print(f"Switched to context {context}")
     return True
 
-def get_all_ingresses():
-    try:
-        ingresses_raw = subprocess.check_output(["kubectl", "get", "ingresses", "--all-namespaces", "-o=json"], text=True)
-        ingresses_json = json.loads(ingresses_raw)
-        return ingresses_json['items']
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while retrieving ingresses: {str(e)}")
-        return []
-    except json.JSONDecodeError as e:
-        print(f"An error occurred while parsing JSON: {str(e)}")
-        return []
+def get_services():
+    services = []
+    cmd = ['kubectl', 'get', 'svc', '--all-namespaces', '-o', 'json']
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    if proc.returncode == 0:
+        services_json = json.loads(out.decode('utf-8'))
+        for service in services_json['items']:
+            try:
+                app_name = service['metadata']['labels']['app']
+                ingress = service['spec']['ports'][0]['nodePort']
+                services.append((app_name, ingress))
+            except (KeyError, IndexError):
+                # Ignoring services that do not match the expected structure
+                pass
+    else:
+        print(f"Error retrieving services: {err.decode('utf-8')}")
+
+    return services
 
 def curl_endpoint(endpoint):
     try:
-        response = subprocess.check_output(["curl", "-Is", endpoint], text=True)
-        print(f"Response from {endpoint}:")
-        print(response)
+        response = subprocess.check_output(["curl", "-o", "/dev/null", "-Is", "-w", "%{http_code}", endpoint], text=True)
+        print(f'"{endpoint}" : "{response.strip()}"')
     except subprocess.CalledProcessError as e:
-        print(f"An error occurred while curling {endpoint}: {str(e)}")
+        print(f'An error occurred while curling {endpoint}: {str(e)}')
 
 def main():
     for cluster in CLUSTERS:
-        if not cluster['context']:
-            print(f"Context for cluster {cluster['name']} is not defined. Skipping...")
-            continue
         if switch_context(cluster):
-            print(f"Fetching ingresses for cluster: {cluster['name']}")
+            services = get_services()
+            for service in services:
+                app_name, ingress = service
+                url = f"https://{app_name}.your-cluster-domain.com:{ingress}/health"
+                curl_endpoint(url)
 
-            ingresses = get_all_ingresses()
-            for ingress in ingresses:
-                for rule in ingress.get('spec', {}).get('rules', []):
-                    host = rule.get('host', '')
-                    if host:
-                        endpoint = f"https://{host}/health"  # Now using HTTPS and /health path.
-                        print(f"Curling: {endpoint}")
-                        curl_endpoint(endpoint)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
