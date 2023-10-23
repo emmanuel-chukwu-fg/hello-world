@@ -52,8 +52,9 @@ def main():
                 for rule in ingress.get('spec', {}).get('rules', []):
                     host = rule.get('host', '')
                     if host:
-                        print(f"Curling: {host}")
-                        curl_endpoint(f"http://{host}")  # Assumes HTTP. Change to 'https://' if endpoints are HTTPS.
+                        endpoint = f"https://{host}/health"  # Now using HTTPS and /health path.
+                        print(f"Curling: {endpoint}")
+                        curl_endpoint(endpoint)
 
 if __name__ == '__main__':
     main()
