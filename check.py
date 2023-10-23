@@ -1,92 +1,103 @@
 import subprocess
 import json
-from urllib.parse import urlparse
-from termcolor import colored
 
-# Define your clusters here
 CLUSTERS = [
-    {"name": "non-prod-warehouse", "project": "corp-test-mgmt-anthos-3578", "context": "connectgateway_corp-test-mgmt-anthos-3578_global_non-prod-warehouse"},
-    # Add other clusters here
+    {"name": "non-prod-buying", "project": "xxxxxx", "context": ""},
+    # Add other clusters here...
 ]
 
 def switch_context(cluster_info):
-    print(f"Switching context to: {cluster_info}")  # Debugging print
     context = cluster_info['context']
     cmd = ['kubectl', 'config', 'use-context', context]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if proc.returncode != 0:
-        print(f"Error switching to context {context}: {err.decode()}")  # Decode error message
+        print(f"Error switching to context {context}: {err.decode('utf-8')}")
         return False
 
-    print(f"Switched to context {context}")  # Debugging print
+    print(f"Switched to context {context}")
     return True
 
-def fetch_ingresses():
-    print("Fetching ingresses...")  # Debugging print
-    cmd = ['kubectl', 'get', 'ingresses', '--all-namespaces', '-o', 'json']
+def get_ingresses():
+    cmd = ['kubectl', 'get', 'ing', '-o', 'json', '--all-namespaces']
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if proc.returncode != 0:
-        print(f"Error fetching ingresses: {err.decode()}")  # Decode error message
-        return None
+        print(f"Error fetching ingresses: {err.decode('utf-8')}")
+        return []
 
-    ingresses = json.loads(out)
-    print(f"Fetched ingresses: {ingresses}")  # Debugging print
+    ingresses = json.loads(out.decode('utf-8'))
+    return ingresses['items']
 
-    # Print all the ingresses in the cluster, each on a new line
-    for ingress in ingresses['items']:
-        print(json.dumps(ingress, indent=4))  # Print each ingress with nice formatting
-
-    return ingresses
-
-def check_endpoint(url, ingresses):
-    print(f"Checking URL: {url}")  # Debugging print
-    host = urlparse(url).netloc
-    ingress_found = any(ingress for ingress in ingresses['items'] if any(rule['host'] == host for rule in ingress['spec']['rules']))
-
-    cmd = ['curl', '-ks', '-o', '/dev/null', '-w', '%{http_code}', url]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def check_url(url):
+    cmd = f"curl -s -o /dev/null -w '%{{http_code}}' {url}"
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if proc.returncode != 0:
-        print(f"Error checking {url}: {err.decode()}")  # Decode error message
+        print(f"Error checking {url}: {err.decode('utf-8')}")
         return None
 
-    status_code = out.decode().strip()
-    print(f"Status code for {url}: {status_code}")  # Debugging print
+    return out.decode('utf-8').strip()
 
-    if status_code == '200':
-        return colored(f"{url}: '{status_code}' - SSL Working Fine", "green")
-    elif status_code == '404' and not ingress_found:
-        return colored(f"{url}: '404' - No ingress found", "yellow")
-    elif status_code == '404':
-        return colored(f"{url}: '404' - Error 404 returned, please investigate", "red")
-    else:
-        return colored(f"Unexpected output for {url}: '{status_code}'", "red")
+def categorize_endpoints(endpoints):
+    status_200, status_404, no_ingress, unexpected = [], [], [], []
+
+    for endpoint in endpoints:
+        status_code = check_url(endpoint + "/health")
+        if status_code == '200':
+            status_200.append(endpoint)
+        elif status_code == '404':
+            if 'no-ingress' in endpoint:
+                no_ingress.append(endpoint)
+            else:
+                status_404.append(endpoint)
+        else:
+            unexpected.append((endpoint, status_code))
+
+    return status_200, status_404, no_ingress, unexpected
 
 def main():
-    print("Script started...")  # Debugging print
-
     for cluster in CLUSTERS:
+        print(f"Switching context to: {cluster}")
         if not switch_context(cluster):
-            continue  # if context switch fails, continue to the next cluster
+            continue
 
-        ingresses = fetch_ingresses()
-        if not ingresses:
-            continue  # if fetching ingresses fails, continue to the next cluster
+        print("Fetching ingresses...")
+        ingresses = get_ingresses()
 
-        for ingress in ingresses['items']:
-            for rule in ingress['spec']['rules']:
-                host = rule['host']
-                url = f"https://{host}/health"
-                result = check_endpoint(url, ingresses)
-                if result:
-                    print(result)
+        endpoints = []
+        for ingress in ingresses:
+            annotations = ingress['metadata'].get('annotations', {})
+            if 'nginx.ingress.kubernetes.io/rewrite-target' in annotations:
+                continue  # Skip ingresses with rewrite-target
 
-    print("Script execution finished.")  # Debugging print
+            rules = ingress['spec'].get('rules', [])
+            for rule in rules:
+                host = rule.get('host', '')
+                if host:
+                    endpoints.append(f"http://{host}")
+
+        status_200, status_404, no_ingress, unexpected = categorize_endpoints(endpoints)
+
+        print("Results:")
+        print("200 SSL working fine:")
+        for endpoint in status_200:
+            print(endpoint)
+
+        print("404 Error, please investigate:")
+        for endpoint in status_404:
+            print(endpoint)
+
+        print("Internal apps, no ingress found:")
+        for endpoint in no_ingress:
+            print(endpoint)
+
+        print("Unexpected status code returned:")
+        for endpoint, status_code in unexpected:
+            print(f"{endpoint}: {status_code}")
 
 if __name__ == "__main__":
     main()
