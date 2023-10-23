@@ -25,12 +25,12 @@ def get_endpoints():
         endpoints = []
 
         for item in ingress_data['items']:
-            try:
-                host = item['spec']['rules'][0]['host']
-                https_scheme = "https://" if item['spec'].get('tls') else "http://"  # Check if TLS is enabled
-                endpoints.append(f"{https_scheme}{host}/health")
-            except (KeyError, IndexError):
-                continue  # Skip ingresses without the necessary structure
+            if 'tls' in item['spec']:  # Ensure that TLS is enabled, implying HTTPS is used
+                try:
+                    host = item['spec']['rules'][0]['host']
+                    endpoints.append(f"https://{host}/health")  # Only gather https URLs
+                except (KeyError, IndexError):
+                    continue  # Skip ingresses without the necessary structure
 
         return endpoints
     except subprocess.CalledProcessError as e:
@@ -38,12 +38,12 @@ def get_endpoints():
         return []
 
 def check_endpoint_health(endpoint):
-    cmd = ['curl', '-o', '/dev/null', '-Is', '-w', '%{http_code}', endpoint]
+    cmd = ['curl', '-o', '/dev/null', '-s', '-w', '%{http_code}', '--insecure', endpoint]  # '--insecure' is used if you're okay with ignoring SSL certificate verification
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        return f"Error: {e.stderr}"
+        return f"Error: {e.stderr}"  # Returning stderr to understand the error during the request
 
 def main():
     for cluster in CLUSTERS:
@@ -55,15 +55,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-"https://test-wh-kronos-api.anthos.sportski.com/health": "Error: "
-"http://test-wh-kronos-api.anthos.sportski.com/health": "Error: "
-"https://test-wh-putwall-api.anthos.sportski.com/health": "Error: "
-"http://test-wh-putwall-api.anthos.sportski.com/health": "Error: "
-"https://test-wh-reform-api.anthos.sportski.com/health": "Error: "
-"https://test-wh-reform-api.anthos.sportski.com/health": "Error: "
-"https://test-wh-self-service.anthos.sportski.com/health": "Error: "
-"http://test-wh-self-service.anthos.sportski.com/health": "Error: "
-"https://test-wh-userevents-api.anthos.sportski.com/health": "Error: "
-"http://test-wh-userevents-api.anthos.sportski.com/health": "Error: "
