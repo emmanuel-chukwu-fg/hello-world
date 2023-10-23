@@ -12,6 +12,7 @@ CLUSTERS = [
 class ANSIColors:
     RED = '\033[91m'
     ENDC = '\033[0m'
+    GREEN = '\033[92m'
     # Add more colors if needed
 
 def switch_context(cluster_info):
@@ -76,7 +77,7 @@ def check_endpoints(apps):
             status_code = status_code.decode().strip()
 
             if status_code == "200":
-                status_codes["200"].append(f"{url}: '{status_code}' - SSL Working Fine")
+                status_codes["200"].append(f"{ANSIColors.GREEN}{url}: '{status_code}' - SSL Working Fine{ANSIColors.ENDC}")
             elif status_code == "404":
                 status_codes["404"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Error 404 returned, please investigate{ANSIColors.ENDC}")
             else:
@@ -87,17 +88,24 @@ def check_endpoints(apps):
     return status_codes
 
 def main():
+    all_status_codes = {"200": [], "404": [], "no_ingress": [], "other": []}
+
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
             apps = get_ingresses()
             status_codes = check_endpoints(apps)
 
-            # Printing all results
-            for status, messages in status_codes.items():
-                for message in messages:
-                    print(message)
+            for status in all_status_codes.keys():
+                all_status_codes[status].extend(status_codes[status])
         else:
             print(f"Skipping checks for cluster: {cluster_info['name']}")
+
+    # Printing all results after checks have been completed for all clusters
+    for status, messages in all_status_codes.items():
+        if messages:
+            print(f"\nResults for status code: {status}")
+            for message in messages:
+                print(message)
 
 if __name__ == "__main__":
     main()
