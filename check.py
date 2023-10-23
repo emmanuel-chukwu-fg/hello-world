@@ -1,5 +1,6 @@
 import subprocess
 import json
+import sys
 
 # Define your clusters with relevant details.
 CLUSTERS = [
@@ -38,22 +39,33 @@ def get_ingresses():
         return [], []
 
     ingresses = json.loads(out.decode())['items']
-    urls_with_ingress = []
+    apps_with_ingress = []
+    apps_without_ingress = []
 
+    # Assuming 'app' label holds the application name
     for ing in ingresses:
-        for rule in ing['spec']['rules']:
-            host = rule['host']
-            if 'http' not in host:
-                host = 'https://' + host
-            urls_with_ingress.append(host + '/health')
+        try:
+            app_name = ing['metadata']['labels']['app']
+            rules = ing['spec']['rules']
+            if rules:
+                for rule in rules:
+                    host = rule['host']
+                    if 'http' not in host:
+                        host = 'https://' + host
+                    apps_with_ingress.append({"app": app_name, "url": host + '/health'})
+            else:
+                apps_without_ingress.append(app_name)
+        except KeyError:
+            continue  # Handle the case where expected fields are not found
 
-    return urls_with_ingress
+    return apps_with_ingress, apps_without_ingress
 
-def check_endpoints(urls_with_ingress):
+def check_endpoints(apps_with_ingress):
     # Check each endpoint that has an ingress and print the status.
-    status_codes = {"200": [], "404": [], "other": []}
+    status_codes = {"200": [], "404": [], "other": [], "no_ingress": []}
 
-    for url in urls_with_ingress:
+    for app in apps_with_ingress:
+        url = app["url"]
         # The -k flag is used with curl to proceed without certificate validation, replace it if needed.
         response = subprocess.Popen(['curl', '-k', '-s', '-o', '/dev/null', '-w', '%{http_code}', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         status_code, error = response.communicate()
@@ -71,18 +83,22 @@ def check_endpoints(urls_with_ingress):
         else:
             status_codes["other"].append(f"{ANSIColors.RED}{url}: '{status_code}' - Unexpected status code returned{ANSIColors.ENDC}")
 
-    for status, messages in status_codes.items():
-        for message in messages:
-            print(message)
+    return status_codes
 
 def main():
     for cluster_info in CLUSTERS:
         if switch_context(cluster_info):
-            urls_with_ingress = get_ingresses()
-            if urls_with_ingress:
-                check_endpoints(urls_with_ingress)
-            else:
-                print(f"No ingresses found in cluster: {cluster_info['name']}")
+            apps_with_ingress, apps_without_ingress = get_ingresses()
+            status_codes = check_endpoints(apps_with_ingress)
+
+            # Adding apps without ingress to the status_codes under "no_ingress"
+            for app in apps_without_ingress:
+                status_codes["no_ingress"].append(f"Internal app with no ingress found: {app}")
+
+            # Printing all results
+            for status, messages in status_codes.items():
+                for message in messages:
+                    print(message)
         else:
             print(f"Skipping checks for cluster: {cluster_info['name']}")
 
