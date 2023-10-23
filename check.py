@@ -104,3 +104,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+Script started...
+Switching context to: {'name': 'non-prod-warehouse', 'project': 'corp-test-mgmt-anthos-3578', 'context': 'connectgateway_corp-test-mgmt-anthos-3578_global_non-prod-warehouse'}
+Switched to context connectgateway_corp-test-mgmt-anthos-3578_global_non-prod-warehouse
+Fetching ingresses...
+Fetched ingresses: {'apiVersion': 'v1', 'items': [{'apiVersion': 'networking.k8s.io/v1', 'kind': 'Ingress', 'metadata': {'annotations': {'kubectl.kubernetes.io/last-applied-configuration': '{"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{},"name":"apache-ingress","namespace":"default"},"spec":{"rules":[{"host":"apache-test-f5.anthos.sportski.com","http":{"paths":[{"backend":{"service":{"name":"apache","port":{"number":80}}},"path":"/","pathType":"Prefix"}]}}]}}\n'}, 'creationTimestamp': '2023-07-11T09:20:34Z', 'generation': 1, 'name': 'apache-ingress', 'namespace': 'default', 'resourceVersion': '136106790', 'uid': '3b2b5e3b-8f88-4fdd-9bd9-4a07fc0e4fb8'}, 'spec': {'rules': [{'host': 'apache-test-f5.anthos.sportski.com', 'http': {'paths': [{'backend': {'service': {'name': 'apache', 'port': {'number': 80}}}, 'path': '/', 'pathType': 'Prefix'}]}}]}, 'status': {'loadBalancer': {'ingress': [{'ip': '172.16.179.25'}]}}}], 'kind': 'List', 'metadata': {'resourceVersion': ''}}
+Checking URL: http://apache-test-f5.anthos.sportski.com/health
+Error checking http://apache-test-f5.anthos.sportski.com/health: 
+Script execution finished.
+
