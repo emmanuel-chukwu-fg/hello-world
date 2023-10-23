@@ -44,11 +44,10 @@ def main():
             print(f"Fetching ingresses for cluster: {cluster['name']}")
             ingresses = get_ingresses()
             for ingress in ingresses:
-                namespace = ingress['metadata']['namespace']
-                name = ingress['metadata']['name']
+                app_name = ingress['metadata']['name']
                 for rule in ingress['spec']['rules']:
                     host = rule['host']
-                    print(f"- namespace: {namespace}, name: {name}, host: {host}")
+                    print(f"App: {app_name}, Endpoint: {host}")
 
 if __name__ == '__main__':
     main()
