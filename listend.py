@@ -2,56 +2,75 @@ import subprocess
 import json
 
 CLUSTERS = [
-    {"name": "non-prod-buying", "project": "xxxxxx", "context": "your-context-name"},
-    # Add other clusters here with their respective context names...
+    {"name": "non-prod-buying", "project": "xxxxxx", "context": ""},
+    # Add other clusters here...
 ]
 
 def switch_context(cluster_info):
     context = cluster_info['context']
     cmd = ['kubectl', 'config', 'use-context', context]
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"Switched to context {context}")
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error switching to context {context}: {e.stderr}")
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    if proc.returncode != 0:
+        print(f"Error switching to context {context}: {err.decode('utf-8')}")
         return False
 
-def get_endpoints():
-    cmd = ['kubectl', 'get', 'ing', '--all-namespaces', '-o', 'json']
-    try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        ingress_data = json.loads(result.stdout)
-        endpoints = []
+    print(f"Switched to context {context}")
+    return True
 
-        for item in ingress_data['items']:
-            if 'tls' in item['spec']:  # Ensure that TLS is enabled, implying HTTPS is used
-                try:
-                    host = item['spec']['rules'][0]['host']
-                    endpoints.append(f"https://{host}/health")  # Only gather https URLs
-                except (KeyError, IndexError):
-                    continue  # Skip ingresses without the necessary structure
+def get_ingress_endpoints():
+    cmd = ['kubectl', 'get', 'ing', '-o', 'json']
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
 
-        return endpoints
-    except subprocess.CalledProcessError as e:
-        print(f"Error retrieving ingresses: {e.stderr}")
-        return []
+    if proc.returncode != 0:
+        print(f"Error getting ingresses: {err.decode('utf-8')}")
+        return None
+
+    ingresses = json.loads(out.decode('utf-8'))
+    endpoints = []
+
+    for item in ingresses['items']:
+        # Assuming the first rule hosts the service endpoint
+        try:
+            rules = item['spec']['rules']
+            for rule in rules:
+                host = rule['host']
+                if host.startswith('http://'):
+                    continue  # Ignore non-HTTPS URLs
+                https_url = f"https://{host}/health"
+                endpoints.append(https_url)
+        except KeyError:
+            continue  # Ingress might not have a 'rules' field
+
+    return endpoints
 
 def check_endpoint_health(endpoint):
-    cmd = ['curl', '-o', '/dev/null', '-s', '-w', '%{http_code}', '--insecure', endpoint]  # '--insecure' is used if you're okay with ignoring SSL certificate verification
-    try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        return f"Error: {e.stderr}"  # Returning stderr to understand the error during the request
+    cmd = ['curl', '-o', '/dev/null', '-s', '-w', '%{http_code}', '--insecure', endpoint]  # '--insecure' for SSL issues
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    out, err = proc.communicate()
+
+    if proc.returncode != 0:
+        print(f"Error curling {endpoint}: {err.strip()}")  # Print the error message from curl
+        return "Error"  # You can return a more descriptive error message if needed
+
+    return out.strip()
 
 def main():
     for cluster in CLUSTERS:
-        if switch_context(cluster):
-            endpoints = get_endpoints()
-            for endpoint in endpoints:
-                status_code = check_endpoint_health(endpoint)
-                print(f'"{endpoint}": "{status_code}"')
+        success = switch_context(cluster)
+        if not success:
+            continue
+
+        print(f"Checking endpoints for cluster {cluster['name']}...")
+        endpoints = get_ingress_endpoints()
+        if endpoints is None:
+            continue
+
+        for endpoint in endpoints:
+            status = check_endpoint_health(endpoint)
+            print(f'"{endpoint}": "{status}"')
 
 if __name__ == "__main__":
     main()
